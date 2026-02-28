@@ -1,0 +1,45 @@
+from flask import Blueprint, jsonify
+
+from models.session_model import InterviewSession
+
+result_bp = Blueprint("results", __name__)
+
+
+@result_bp.get("/result/<uuid:session_id>")
+def get_result(session_id):
+    session = InterviewSession.query.get(session_id)
+    if not session:
+        return jsonify({"message": "Session not found"}), 404
+
+    responses_data = []
+    for r in session.responses:
+        responses_data.append(
+            {
+                "id": str(r.id),
+                "question": r.question,
+                "transcript": r.transcript,
+                "facial_score": r.facial_score,
+                "speech_score": r.speech_score,
+                "nlp_score": r.nlp_score,
+                "final_score": r.final_score,
+                "created_at": r.created_at.isoformat(),
+            }
+        )
+
+    return (
+        jsonify(
+            {
+                "session_id": str(session.id),
+                "user_id": str(session.user_id),
+                "position": session.position,
+                "started_at": session.started_at.isoformat(),
+                "completed_at": session.completed_at.isoformat()
+                if session.completed_at
+                else None,
+                "overall_score": session.overall_score,
+                "responses": responses_data,
+            }
+        ),
+        200,
+    )
+
