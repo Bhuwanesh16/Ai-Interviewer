@@ -18,6 +18,8 @@ export const registerUser = (payload) => apiClient.post('/auth/register', payloa
 
 export const loginUser = (payload) => apiClient.post('/auth/login', payload)
 
+export const generateQuestions = (payload) => apiClient.post('/interview/generate_questions', payload)
+
 export const startInterview = (payload) => apiClient.post('/interview/start', payload)
 
 export const submitInterview = (formData) =>
@@ -25,6 +27,14 @@ export const submitInterview = (formData) =>
     headers: { 'Content-Type': 'multipart/form-data' },
   })
 
+export const analyzeChunk = (formData) =>
+  apiClient.post('/interview/analyze', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+
 export const fetchResult = (sessionId) =>
   apiClient.get(`/interview/result/${sessionId}`)
+
+export const fetchHistory = () =>
+  apiClient.get('/interview/history')
 

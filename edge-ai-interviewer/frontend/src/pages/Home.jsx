@@ -1,11 +1,7 @@
-import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
-
-const metrics = [
-  { label: 'Emotion', value: '0.78', color: '#34d399', glow: 'rgba(52,211,153,0.5)', sub: 'Facial expression' },
-  { label: 'Speech',  value: '0.83', color: '#38bdf8', glow: 'rgba(56,189,248,0.5)', sub: 'Pace & clarity' },
-  { label: 'Content', value: '0.81', color: '#a78bfa', glow: 'rgba(167,139,250,0.5)', sub: 'Relevance' },
-]
+import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { fetchHistory } from '../services/api'
 
 const features = [
   {
@@ -26,6 +22,63 @@ const features = [
 ]
 
 const Home = () => {
+  const navigate = useNavigate()
+  const [sessions, setSessions] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+
+  // Compute aggregate metrics from sessions
+  const latestSession = sessions.length > 0 ? sessions[0] : null
+  const latestResponse = latestSession?.responses?.length > 0
+    ? latestSession.responses[latestSession.responses.length - 1]
+    : null
+
+  const liveMetrics = latestResponse
+    ? [
+      { label: 'Emotion', value: latestResponse.facial_score?.toFixed(2) || '—', color: '#34d399', glow: 'rgba(52,211,153,0.5)', sub: 'Facial expression' },
+      { label: 'Speech', value: latestResponse.speech_score?.toFixed(2) || '—', color: '#38bdf8', glow: 'rgba(56,189,248,0.5)', sub: 'Pace & clarity' },
+      { label: 'Content', value: latestResponse.nlp_score?.toFixed(2) || '—', color: '#a78bfa', glow: 'rgba(167,139,250,0.5)', sub: 'Relevance' },
+    ]
+    : [
+      { label: 'Emotion', value: '—', color: '#34d399', glow: 'rgba(52,211,153,0.5)', sub: 'Facial expression' },
+      { label: 'Speech', value: '—', color: '#38bdf8', glow: 'rgba(56,189,248,0.5)', sub: 'Pace & clarity' },
+      { label: 'Content', value: '—', color: '#a78bfa', glow: 'rgba(167,139,250,0.5)', sub: 'Relevance' },
+    ]
+
+  const overallScore = latestSession?.overall_score
+    ? Math.round(latestSession.overall_score * 100)
+    : null
+
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      setIsLoggedIn(false)
+      return
+    }
+    setIsLoggedIn(true)
+    setLoading(true)
+    fetchHistory()
+      .then(({ data }) => {
+        setSessions(data.sessions || [])
+      })
+      .catch((err) => {
+        console.error('Failed to load history', err)
+        if (err.response?.status === 401) {
+          localStorage.removeItem('token')
+          localStorage.removeItem('user')
+          setIsLoggedIn(false)
+        }
+      })
+      .finally(() => setLoading(false))
+  }, [])
+
+  const fmtDate = (iso) => {
+    if (!iso) return '—'
+    const d = new Date(iso)
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) +
+      ' · ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+  }
+
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: '3rem 1.5rem' }}>
 
@@ -35,7 +88,7 @@ const Home = () => {
         gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
         gap: '3rem',
         alignItems: 'center',
-        marginBottom: '5rem',
+        marginBottom: '3rem',
       }}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -46,8 +99,7 @@ const Home = () => {
             fontFamily: "'JetBrains Mono', monospace",
             fontSize: '0.7rem',
             letterSpacing: '0.18em',
-            color: '#38bdf8',
-            textShadow: '0 0 20px rgba(56,189,248,0.5)',
+            color: '#0ea5e9',
             textTransform: 'uppercase',
             marginBottom: '1rem',
           }}>
@@ -60,12 +112,12 @@ const Home = () => {
             fontSize: 'clamp(2rem, 5vw, 3.25rem)',
             lineHeight: 1.1,
             letterSpacing: '-0.04em',
-            color: '#f0f9ff',
+            color: '#0f172a',
             marginBottom: '1.25rem',
           }}>
             Practice smarter.<br />
             <span style={{
-              background: 'linear-gradient(135deg, #38bdf8 0%, #34d399 50%, #a78bfa 100%)',
+              background: 'linear-gradient(135deg, #0ea5e9 0%, #059669 50%, #7c3aed 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
@@ -87,228 +139,207 @@ const Home = () => {
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
             <Link
-              to="/register"
+              to={isLoggedIn ? "/interview" : "/register"}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '0.5rem',
                 padding: '0.7rem 1.5rem',
                 borderRadius: '99px',
-                background: 'linear-gradient(135deg, #38bdf8, #0ea5e9)',
-                color: '#031220',
+                background: 'linear-gradient(135deg, #0ea5e9, #0284c7)',
+                color: '#fff',
                 fontFamily: "'DM Sans', sans-serif",
                 fontWeight: 700,
                 fontSize: '0.875rem',
                 textDecoration: 'none',
-                boxShadow: '0 0 24px rgba(56,189,248,0.35), 0 4px 16px rgba(0,0,0,0.4)',
+                boxShadow: '0 2px 16px rgba(14,165,233,0.35)',
                 transition: 'all 0.25s cubic-bezier(0.16,1,0.3,1)',
                 position: 'relative',
                 overflow: 'hidden',
               }}
             >
-              Get started →
+              {isLoggedIn ? 'Start an interview →' : 'Get started →'}
             </Link>
-            <Link
-              to="/interview"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                padding: '0.7rem 1.5rem',
-                borderRadius: '99px',
-                border: '1px solid rgba(148,163,184,0.18)',
-                background: 'rgba(8,20,40,0.5)',
-                color: '#94a3b8',
-                fontFamily: "'DM Sans', sans-serif",
-                fontWeight: 500,
-                fontSize: '0.875rem',
-                textDecoration: 'none',
-                transition: 'all 0.25s cubic-bezier(0.16,1,0.3,1)',
-              }}
-            >
-              Try a mock interview
-            </Link>
+            {!isLoggedIn && (
+              <Link
+                to="/interview"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: '0.7rem 1.5rem',
+                  borderRadius: '99px',
+                  border: '1px solid rgba(148,163,184,0.35)',
+                  background: 'rgba(255,255,255,0.9)',
+                  color: '#475569',
+                  fontFamily: "'DM Sans', sans-serif",
+                  fontWeight: 500,
+                  fontSize: '0.875rem',
+                  textDecoration: 'none',
+                  transition: 'all 0.25s cubic-bezier(0.16,1,0.3,1)',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                }}
+              >
+                Try a mock interview
+              </Link>
+            )}
           </div>
         </motion.div>
 
-        {/* Preview card */}
+        {/* Feature side / Graphic placeholder */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-          style={{ position: 'relative' }}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}
         >
-          {/* Glow blob */}
-          <div style={{
-            position: 'absolute',
-            inset: '-3rem',
-            background: 'radial-gradient(ellipse at 50% 50%, rgba(56,189,248,0.1) 0%, rgba(167,139,250,0.06) 40%, transparent 70%)',
-            filter: 'blur(40px)',
-            pointerEvents: 'none',
-            animation: 'float 10s ease-in-out infinite',
-          }} />
-
-          <div style={{
-            position: 'relative',
-            borderRadius: '1.5rem',
-            border: '1px solid rgba(56,189,248,0.12)',
-            background: 'rgba(8,20,40,0.8)',
-            backdropFilter: 'blur(16px)',
-            padding: '1.5rem',
-            boxShadow: '0 4px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.03) inset',
-          }}>
-            {/* Header row */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <span style={{
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: '0.8125rem',
-                fontWeight: 500,
-                color: '#64748b',
-              }}>
-                Interview snapshot
-              </span>
-              <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                <span style={{
-                  width: 6, height: 6,
-                  borderRadius: '50%',
-                  background: '#34d399',
-                  boxShadow: '0 0 6px rgba(52,211,153,0.7)',
-                }} />
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', color: '#334155' }}>
-                  live · local GPU
-                </span>
-              </div>
+          {liveMetrics.map((m, i) => (
+            <div key={i} style={{ padding: '1.25rem', borderRadius: '1.25rem', background: '#fff', border: '1px solid rgba(148,163,184,0.1)', boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }}>
+              <p style={{ fontSize: '0.6rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.5rem', fontFamily: "'JetBrains Mono', monospace" }}>{m.label}</p>
+              <p style={{ fontSize: '1.5rem', fontWeight: 800, color: m.color, fontFamily: "'Syne', sans-serif" }}>{m.value}</p>
             </div>
-
-            {/* Metric cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '0.75rem', marginBottom: '1rem' }}>
-              {metrics.map((m, i) => (
-                <motion.div
-                  key={m.label}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 + i * 0.08 }}
-                  style={{
-                    borderRadius: '1rem',
-                    border: '1px solid rgba(56,189,248,0.08)',
-                    background: 'rgba(2,6,15,0.7)',
-                    padding: '0.875rem 0.75rem',
-                    transition: 'border-color 0.25s ease, transform 0.25s ease',
-                    cursor: 'default',
-                  }}
-                  whileHover={{ borderColor: m.glow, y: -3 }}
-                >
-                  <p style={{
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: '0.6rem',
-                    letterSpacing: '0.12em',
-                    textTransform: 'uppercase',
-                    color: '#334155',
-                    marginBottom: '0.375rem',
-                  }}>{m.label}</p>
-                  <p style={{
-                    fontFamily: "'Syne', sans-serif",
-                    fontSize: '1.375rem',
-                    fontWeight: 700,
-                    color: m.color,
-                    textShadow: `0 0 20px ${m.glow}`,
-                    lineHeight: 1,
-                    marginBottom: '0.3rem',
-                  }}>{m.value}</p>
-                  <p style={{ fontSize: '0.65rem', color: '#1e293b' }}>{m.sub}</p>
-                </motion.div>
-              ))}
-            </div>
-
-            {/* Mini bar */}
-            <div style={{
-              height: 4,
-              borderRadius: 99,
-              background: 'rgba(56,189,248,0.06)',
-              overflow: 'hidden',
-            }}>
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: '82%' }}
-                transition={{ delay: 0.6, duration: 1, ease: [0.16,1,0.3,1] }}
-                style={{
-                  height: '100%',
-                  background: 'linear-gradient(90deg, #0ea5e9, #38bdf8, #34d399)',
-                  boxShadow: '0 0 12px rgba(56,189,248,0.5)',
-                  borderRadius: 99,
-                }}
-              />
-            </div>
-            <p style={{ fontSize: '0.65rem', color: '#1e293b', marginTop: '0.4rem' }}>
-              Overall performance: 82 / 100
-            </p>
-          </div>
+          ))}
         </motion.div>
       </div>
 
-      {/* ── Feature grid ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.35, duration: 0.5 }}
-      >
-        <p style={{
-          fontFamily: "'JetBrains Mono', monospace",
-          fontSize: '0.65rem',
-          letterSpacing: '0.2em',
-          textTransform: 'uppercase',
-          color: '#38bdf8',
-          marginBottom: '1.5rem',
-          textShadow: '0 0 16px rgba(56,189,248,0.4)',
-        }}>How it works</p>
-
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-          gap: '1rem',
-        }}>
-          {features.map((f, i) => (
-            <motion.div
-              key={f.title}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 + i * 0.08 }}
-              style={{
-                borderRadius: '1.25rem',
-                border: '1px solid rgba(56,189,248,0.07)',
-                background: 'rgba(8,20,40,0.6)',
-                backdropFilter: 'blur(12px)',
-                padding: '1.5rem',
-                transition: 'border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease',
-                cursor: 'default',
-              }}
-              whileHover={{
-                borderColor: 'rgba(56,189,248,0.2)',
-                y: -3,
-                boxShadow: '0 8px 32px rgba(0,0,0,0.5), 0 0 24px rgba(56,189,248,0.07)',
-              }}
+      {/* ── Real-time Feedback Summary ── */}
+      {isLoggedIn && latestSession && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+          style={{
+            marginBottom: '3rem',
+            padding: '1.75rem',
+            borderRadius: '1.5rem',
+            background: 'linear-gradient(145deg, rgba(255,255,255,0.9), rgba(248,250,252,0.8))',
+            border: '1px solid rgba(14,165,233,0.15)',
+            boxShadow: '0 10px 30px -15px rgba(14,165,233,0.1)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1.25rem'
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ padding: '0.5rem', borderRadius: '0.75rem', background: 'rgba(14,165,233,0.1)', color: '#0ea5e9' }}>
+                <span style={{ fontSize: '1.25rem' }}>📋</span>
+              </div>
+              <div>
+                <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '1.125rem', fontWeight: 800, margin: 0, color: '#0f172a' }}>Latest Performance Summary</h2>
+                <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0 }}>Based on your last session for <b>{latestSession.position}</b></p>
+              </div>
+            </div>
+            <Link
+              to={`/result/${latestSession.session_id}`}
+              style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0ea5e9', textDecoration: 'none' }}
             >
-              <div style={{
-                width: 36, height: 36,
-                borderRadius: '0.625rem',
-                background: 'rgba(56,189,248,0.08)',
-                border: '1px solid rgba(56,189,248,0.15)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '1rem',
-                marginBottom: '1rem',
-                color: '#38bdf8',
-              }}>{f.icon}</div>
-              <h3 style={{
-                fontFamily: "'Syne', sans-serif",
-                fontSize: '0.9375rem',
-                fontWeight: 700,
-                color: '#e2e8f0',
-                marginBottom: '0.5rem',
-              }}>{f.title}</h3>
-              <p style={{ fontSize: '0.8125rem', color: '#475569', lineHeight: 1.65 }}>{f.desc}</p>
-            </motion.div>
-          ))}
-        </div>
-      </motion.div>
+              Full analysis →
+            </Link>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+            {[
+              { label: 'Expression', score: latestResponse?.facial_score, color: '#10b981', icon: '😊' },
+              { label: 'Voice clarity', score: latestResponse?.speech_score, color: '#0ea5e9', icon: '🎙️' },
+              { label: 'Relevance', score: latestResponse?.nlp_score, color: '#8b5cf6', icon: '🎯' }
+            ].map((m, i) => (
+              <div key={i} style={{ padding: '1rem', borderRadius: '1rem', background: '#fff', border: '1px solid rgba(148,163,184,0.1)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>{m.icon} {m.label}</span>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: m.color }}>{m.score ? Math.round(m.score * 100) : '--'}%</span>
+                </div>
+                <div style={{ height: 4, borderRadius: 2, background: 'rgba(148,163,184,0.1)', overflow: 'hidden' }}>
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${(m.score || 0) * 100}%` }}
+                    style={{ height: '100%', background: m.color, borderRadius: 2 }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <p style={{
+            fontSize: '0.85rem',
+            lineHeight: 1.6,
+            color: '#475569',
+            background: 'rgba(148,163,184,0.03)',
+            padding: '1rem',
+            borderRadius: '0.75rem',
+            borderLeft: '3px solid #0ea5e9',
+            margin: 0
+          }}>
+            <b>Growth Tip:</b> {
+              latestResponse?.facial_score < 0.6 ? "Try maintaining a bit more energy in your facial expressions to project confidence." :
+                latestResponse?.speech_score < 0.6 ? "Working on a steady pace will significantly improve your clarity score." :
+                  latestResponse?.nlp_score < 0.6 ? "Integrating more specific keywords from the job description can boost your relevance." :
+                    "Your performance is looking solid! Continue refining your STAR method delivery for maximum impact."
+            }
+          </p>
+        </motion.div>
+      )}
+
+      {/* ── Past Interview History ── */}
+      {isLoggedIn && (
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25, duration: 0.5 }}
+          style={{ marginBottom: '3rem' }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+            <p style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: '0.65rem',
+              letterSpacing: '0.2em',
+              textTransform: 'uppercase',
+              color: '#0ea5e9',
+            }}>Your interview history</p>
+          </div>
+
+          {loading ? (
+            <div style={{ padding: '2rem', textAlign: 'center' }}>Loading...</div>
+          ) : sessions.length === 0 ? (
+            <div style={{ padding: '2rem', textAlign: 'center', border: '1px dashed #cbd5e1', borderRadius: '1rem' }}>No history found.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {sessions.map((session) => {
+                const overallPct = session.overall_score ? Math.round(session.overall_score * 100) : null
+                return (
+                  <div
+                    key={session.session_id}
+                    onClick={() => navigate(`/result/${session.session_id}`)}
+                    style={{
+                      borderRadius: '1.25rem', padding: '1.25rem', background: '#fff', border: '1px solid rgba(148,163,184,0.2)',
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer'
+                    }}
+                  >
+                    <div>
+                      <h4 style={{ margin: 0, fontFamily: "'Syne', sans-serif" }}>{session.position}</h4>
+                      <p style={{ margin: '4px 0 0', fontSize: '0.7rem', color: '#64748b' }}>{fmtDate(session.started_at)}</p>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0ea5e9' }}>{overallPct || '--'}</span>
+                      <span style={{ fontSize: '0.6rem', color: '#94a3b8', display: 'block' }}>SCORE</span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </motion.div>
+      )}
+
+      {/* ── Features ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
+        {features.map((f, i) => (
+          <div key={i} style={{ padding: '1.5rem', borderRadius: '1.25rem', background: '#fff', border: '1px solid rgba(148,163,184,0.1)' }}>
+            <div style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>{f.icon}</div>
+            <h4 style={{ margin: '0 0 0.5rem', fontFamily: "'Syne', sans-serif" }}>{f.title}</h4>
+            <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b', lineHeight: 1.6 }}>{f.desc}</p>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

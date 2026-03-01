@@ -5,15 +5,16 @@ import { loginUser, registerUser } from '../services/api'
 
 const inputStyle = {
   width: '100%',
-  background: 'rgba(2,6,15,0.9)',
-  border: '1px solid rgba(56,189,248,0.1)',
-  color: '#f0f9ff',
+  background: '#ffffff',
+  border: '1px solid rgba(148,163,184,0.3)',
+  color: '#0f172a',
   borderRadius: '0.75rem',
   padding: '0.65rem 0.875rem',
   fontFamily: "'DM Sans', sans-serif",
   fontSize: '0.875rem',
   outline: 'none',
   transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+  boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
 }
 
 const InputField = ({ label, type, name, value, onChange, required }) => {
@@ -25,7 +26,7 @@ const InputField = ({ label, type, name, value, onChange, required }) => {
         fontSize: '0.65rem',
         letterSpacing: '0.12em',
         textTransform: 'uppercase',
-        color: focused ? '#38bdf8' : '#334155',
+        color: focused ? '#0ea5e9' : '#64748b',
         transition: 'color 0.2s ease',
       }}>
         {label}
@@ -40,10 +41,8 @@ const InputField = ({ label, type, name, value, onChange, required }) => {
         onBlur={() => setFocused(false)}
         style={{
           ...inputStyle,
-          borderColor: focused ? '#0ea5e9' : 'rgba(56,189,248,0.1)',
-          boxShadow: focused
-            ? '0 0 0 3px rgba(14,165,233,0.12), 0 0 20px rgba(14,165,233,0.08)'
-            : 'none',
+          borderColor: focused ? '#0ea5e9' : 'rgba(148,163,184,0.3)',
+          boxShadow: focused ? '0 0 0 3px rgba(14,165,233,0.15)' : '0 1px 2px rgba(0,0,0,0.04)',
         }}
       />
     </div>
@@ -88,13 +87,13 @@ const Register = () => {
       padding: '2rem 1rem',
       position: 'relative',
     }}>
-      {/* Ambient glow */}
+      {/* Ambient glow (light) */}
       <div style={{
         position: 'absolute',
         top: '20%', left: '50%',
         transform: 'translateX(-50%)',
         width: 500, height: 400,
-        background: 'radial-gradient(ellipse, rgba(56,189,248,0.07) 0%, transparent 65%)',
+        background: 'radial-gradient(ellipse, rgba(14,165,233,0.06) 0%, transparent 65%)',
         pointerEvents: 'none',
       }} />
 
@@ -106,11 +105,11 @@ const Register = () => {
           width: '100%',
           maxWidth: 420,
           borderRadius: '1.5rem',
-          border: '1px solid rgba(56,189,248,0.1)',
-          background: 'rgba(8,20,40,0.85)',
+          border: '1px solid rgba(148,163,184,0.25)',
+          background: 'rgba(255,255,255,0.95)',
           backdropFilter: 'blur(20px)',
           padding: '2rem',
-          boxShadow: '0 4px 40px rgba(0,0,0,0.6), 0 0 60px rgba(56,189,248,0.05)',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 32px rgba(0,0,0,0.08)',
           position: 'relative',
         }}
       >
@@ -119,7 +118,7 @@ const Register = () => {
           position: 'absolute',
           top: 0, right: 0,
           width: 120, height: 120,
-          background: 'radial-gradient(ellipse at 100% 0%, rgba(56,189,248,0.06) 0%, transparent 70%)',
+          background: 'radial-gradient(ellipse at 100% 0%, rgba(14,165,233,0.05) 0%, transparent 70%)',
           borderRadius: '0 1.5rem 0 0',
           pointerEvents: 'none',
         }} />
@@ -132,8 +131,7 @@ const Register = () => {
               fontSize: '0.6rem',
               letterSpacing: '0.18em',
               textTransform: 'uppercase',
-              color: '#38bdf8',
-              textShadow: '0 0 14px rgba(56,189,248,0.4)',
+              color: '#0ea5e9',
               marginBottom: '0.4rem',
             }}>
               {mode === 'register' ? 'Create account' : 'Welcome back'}
@@ -142,7 +140,7 @@ const Register = () => {
               fontFamily: "'Syne', sans-serif",
               fontWeight: 700,
               fontSize: '1.375rem',
-              color: '#f0f9ff',
+              color: '#0f172a',
               letterSpacing: '-0.03em',
             }}>
               {mode === 'register' ? 'Start practicing interviews' : 'Sign in to continue'}
@@ -154,14 +152,14 @@ const Register = () => {
             onClick={() => { setMode(m => m === 'register' ? 'login' : 'register'); setError('') }}
             style={{
               fontSize: '0.75rem',
-              color: '#38bdf8',
+              color: '#0ea5e9',
               background: 'transparent',
               border: 'none',
               cursor: 'pointer',
               fontFamily: "'DM Sans', sans-serif",
               padding: '0.25rem 0',
               textDecoration: 'underline',
-              textDecorationColor: 'rgba(56,189,248,0.3)',
+              textDecorationColor: 'rgba(14,165,233,0.4)',
               textUnderlineOffset: 3,
               transition: 'color 0.2s ease',
               flexShrink: 0,
@@ -230,14 +228,14 @@ const Register = () => {
               borderRadius: '0.875rem',
               border: 'none',
               background: loading
-                ? 'rgba(14,165,233,0.3)'
-                : 'linear-gradient(135deg, #38bdf8 0%, #0ea5e9 55%, #0369a1 100%)',
-              color: loading ? '#94a3b8' : '#031220',
+                ? 'rgba(14,165,233,0.4)'
+                : 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+              color: loading ? '#94a3b8' : '#fff',
               fontFamily: "'DM Sans', sans-serif",
               fontWeight: 700,
               fontSize: '0.9rem',
               cursor: loading ? 'not-allowed' : 'pointer',
-              boxShadow: loading ? 'none' : '0 0 24px rgba(56,189,248,0.3), 0 4px 14px rgba(0,0,0,0.4)',
+              boxShadow: loading ? 'none' : '0 2px 12px rgba(14,165,233,0.35)',
               transition: 'all 0.25s ease',
               position: 'relative',
               overflow: 'hidden',
@@ -249,7 +247,7 @@ const Register = () => {
                   width: 14, height: 14,
                   borderRadius: '50%',
                   border: '2px solid rgba(56,189,248,0.2)',
-                  borderTopColor: '#38bdf8',
+                  borderTopColor: '#0ea5e9',
                   display: 'inline-block',
                   animation: 'spin 0.8s linear infinite',
                 }} />
@@ -266,7 +264,7 @@ const Register = () => {
           marginTop: '1.25rem',
           textAlign: 'center',
           fontSize: '0.7rem',
-          color: '#1e293b',
+          color: '#94a3b8',
           fontFamily: "'DM Sans', sans-serif",
         }}>
           Your data stays on-device · No cloud required
