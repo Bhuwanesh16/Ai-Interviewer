@@ -20,7 +20,7 @@ const LoadingScreen = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'rgba(2,4,9,0.88)',
+        background: 'rgba(248,250,252,0.9)',
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
       }}
@@ -29,7 +29,7 @@ const LoadingScreen = () => {
       <div style={{
         position: 'absolute',
         width: 400, height: 400,
-        background: 'radial-gradient(ellipse, rgba(56,189,248,0.07) 0%, transparent 65%)',
+        background: 'radial-gradient(ellipse, rgba(14,165,233,0.08) 0%, transparent 65%)',
         pointerEvents: 'none',
         animation: 'float 6s ease-in-out infinite',
       }} />
@@ -40,10 +40,10 @@ const LoadingScreen = () => {
         transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
         style={{
           borderRadius: '1.5rem',
-          border: '1px solid rgba(56,189,248,0.12)',
-          background: 'rgba(8,20,40,0.95)',
+          border: '1px solid rgba(148,163,184,0.25)',
+          background: 'rgba(255,255,255,0.98)',
           padding: '2.25rem 2.5rem',
-          boxShadow: '0 4px 48px rgba(0,0,0,0.7), 0 0 60px rgba(56,189,248,0.06)',
+          boxShadow: '0 4px 32px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.04)',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -109,7 +109,7 @@ const LoadingScreen = () => {
             fontWeight: 700,
             fontSize: '1.0625rem',
             letterSpacing: '-0.02em',
-            color: '#f0f9ff',
+            color: '#0f172a',
             marginBottom: '0.375rem',
           }}>
             Analyzing your response
@@ -117,7 +117,7 @@ const LoadingScreen = () => {
           <p style={{
             fontFamily: "'DM Sans', sans-serif",
             fontSize: '0.8rem',
-            color: '#334155',
+            color: '#64748b',
             lineHeight: 1.6,
           }}>
             Running local models on your interview data

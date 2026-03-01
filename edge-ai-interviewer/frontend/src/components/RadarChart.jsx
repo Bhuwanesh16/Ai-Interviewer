@@ -16,17 +16,30 @@ const RadarChart = ({ scores }) => {
   ]
 
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-      <p className="text-xs uppercase tracking-wide text-slate-400 mb-2">
+    <div style={{
+      borderRadius: '1.25rem',
+      border: '1px solid rgba(148,163,184,0.25)',
+      background: 'rgba(255,255,255,0.95)',
+      padding: '1rem',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+    }}>
+      <p style={{
+        fontFamily: "'JetBrains Mono', monospace",
+        fontSize: '0.65rem',
+        letterSpacing: '0.12em',
+        textTransform: 'uppercase',
+        color: '#64748b',
+        marginBottom: '0.5rem',
+      }}>
         Multi-modal profile
       </p>
-      <div className="h-64">
+      <div style={{ height: 256 }}>
         <ResponsiveContainer width="100%" height="100%">
           <ReRadarChart data={data}>
-            <PolarGrid stroke="#1e293b" />
-            <PolarAngleAxis dataKey="metric" tick={{ fill: '#9ca3af', fontSize: 11 }} />
+            <PolarGrid stroke="rgba(148,163,184,0.25)" />
+            <PolarAngleAxis dataKey="metric" tick={{ fill: '#64748b', fontSize: 11 }} />
             <PolarRadiusAxis
-              tick={{ fill: '#6b7280', fontSize: 10 }}
+              tick={{ fill: '#94a3b8', fontSize: 10 }}
               tickLine={false}
               axisLine={false}
               angle={30}
@@ -35,9 +48,9 @@ const RadarChart = ({ scores }) => {
             <Radar
               name="Score"
               dataKey="value"
-              stroke="#38bdf8"
+              stroke="#0ea5e9"
               fill="#0ea5e9"
-              fillOpacity={0.5}
+              fillOpacity={0.35}
             />
           </ReRadarChart>
         </ResponsiveContainer>

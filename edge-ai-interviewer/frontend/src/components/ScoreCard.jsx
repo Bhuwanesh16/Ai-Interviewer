@@ -52,7 +52,7 @@ const ScoreCard = ({ label, score, accent = 'sky' }) => {
       style={{
         borderRadius: '1.125rem',
         border: `1px solid ${c.border}`,
-        background: 'rgba(8,20,40,0.75)',
+        background: 'rgba(255,255,255,0.95)',
         backdropFilter: 'blur(12px)',
         padding: '1rem 1.125rem',
         display: 'flex',
@@ -61,11 +61,11 @@ const ScoreCard = ({ label, score, accent = 'sky' }) => {
         gap: '1rem',
         transition: 'border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease',
         cursor: 'default',
-        boxShadow: `0 4px 20px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.02) inset`,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)',
       }}
       whileHover={{
         y: -2,
-        boxShadow: `0 8px 32px rgba(0,0,0,0.5), 0 0 20px ${c.glow}22`,
+        boxShadow: `0 4px 20px rgba(0,0,0,0.08), 0 0 0 1px ${c.border}`,
       }}
     >
       {/* Left: label + sub + bar */}
@@ -76,7 +76,6 @@ const ScoreCard = ({ label, score, accent = 'sky' }) => {
           letterSpacing: '0.14em',
           textTransform: 'uppercase',
           color: c.primary,
-          textShadow: `0 0 12px ${c.glow}`,
           marginBottom: '0.2rem',
         }}>{label}</p>
         <p style={{

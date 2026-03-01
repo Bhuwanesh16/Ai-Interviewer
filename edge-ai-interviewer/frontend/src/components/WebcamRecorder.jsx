@@ -1,8 +1,89 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
 
-const WebcamRecorder = ({ isRecording, onReady, mediaStream, setMediaStream }) => {
+const WebcamRecorder = ({ isRecording, onReady, mediaStream, setMediaStream, onEmotionScore }) => {
   const videoRef = useRef(null)
+  const [faceLandmarker, setFaceLandmarker] = useState(null)
+  const [isLoadingModel, setIsLoadingModel] = useState(true)
 
+  // Initialize MediaPipe FaceLandmarker
+  useEffect(() => {
+    const initLandmarker = async () => {
+      try {
+        const vision = await FilesetResolver.forVisionTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.12/wasm"
+        )
+        const landmarker = await FaceLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+            delegate: "GPU" // Uses WebGL
+          },
+          outputFaceBlendshapes: true,
+          runningMode: "VIDEO",
+          numFaces: 1
+        })
+        setFaceLandmarker(landmarker)
+      } catch (err) {
+        console.error('Failed to initialize FaceLandmarker', err)
+      } finally {
+        setIsLoadingModel(false)
+      }
+    }
+    initLandmarker()
+  }, [])
+
+  // Process video frames for emotion detection
+  useEffect(() => {
+    let animationFrameId
+    let lastVideoTime = -1
+
+    const processVideo = () => {
+      if (videoRef.current && faceLandmarker && isRecording) {
+        const video = videoRef.current
+        // Only process if the video frame has been updated
+        if (video.currentTime !== lastVideoTime) {
+          lastVideoTime = video.currentTime
+          try {
+            const results = faceLandmarker.detectForVideo(video, performance.now())
+            if (results.faceBlendshapes && results.faceBlendshapes.length > 0) {
+              const shapes = results.faceBlendshapes[0].categories
+
+              const getScore = (name) => shapes.find(s => s.categoryName === name)?.score || 0
+
+              const smile = Math.max(getScore('mouthSmileLeft'), getScore('mouthSmileRight'))
+              const eyeOpen = 1 - Math.max(getScore('eyeBlinkLeft'), getScore('eyeBlinkRight'))
+              const browDown = Math.max(getScore('browDownLeft'), getScore('browDownRight'))
+
+              // Edge AI metric: basic heuristic for interview engagement
+              // Positive signals: smiling, eyes open. Negative: intensely furrowed brows
+              let emoScore = (smile * 0.4) + (eyeOpen * 0.5) + ((1 - browDown) * 0.1)
+              // Normalize slightly to keep it in 0-1 range (smiling implies higher score)
+              emoScore = Math.max(0, Math.min(1, emoScore * 1.5))
+
+              const now = performance.now()
+              if (onEmotionScore && (!videoRef.current._lastE || now - videoRef.current._lastE > 500)) {
+                onEmotionScore(emoScore)
+                videoRef.current._lastE = now
+              }
+            }
+          } catch (err) {
+            console.error('Error during media pipe inference', err)
+          }
+        }
+      }
+      animationFrameId = requestAnimationFrame(processVideo)
+    }
+
+    if (isRecording && faceLandmarker) {
+      processVideo()
+    }
+
+    return () => {
+      if (animationFrameId) cancelAnimationFrame(animationFrameId)
+    }
+  }, [faceLandmarker, isRecording, onEmotionScore])
+
+  // Setup generic webcam stream
   useEffect(() => {
     const setup = async () => {
       if (!mediaStream) {
@@ -24,13 +105,13 @@ const WebcamRecorder = ({ isRecording, onReady, mediaStream, setMediaStream }) =
   return (
     <div style={{
       borderRadius: '1.25rem',
-      border: `1px solid ${isRecording ? 'rgba(251,113,133,0.2)' : 'rgba(56,189,248,0.08)'}`,
-      background: 'rgba(8,20,40,0.8)',
+      border: `1px solid ${isRecording ? 'rgba(225,29,72,0.25)' : 'rgba(148,163,184,0.25)'}`,
+      background: 'rgba(255,255,255,0.95)',
       overflow: 'hidden',
       transition: 'border-color 0.4s ease, box-shadow 0.4s ease',
       boxShadow: isRecording
-        ? '0 0 0 1px rgba(251,113,133,0.1), 0 0 30px rgba(251,113,133,0.08)'
-        : '0 4px 24px rgba(0,0,0,0.4)',
+        ? '0 0 0 1px rgba(225,29,72,0.1), 0 4px 24px rgba(0,0,0,0.08)'
+        : '0 1px 3px rgba(0,0,0,0.06), 0 4px 20px rgba(0,0,0,0.04)',
       position: 'relative',
     }}>
       {/* Aspect ratio wrapper */}

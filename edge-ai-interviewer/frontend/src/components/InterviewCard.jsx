@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useEffect } from 'react'
 
-const InterviewCard = ({ question, onStart, onStop, isRecording, timer }) => {
+const InterviewCard = ({ question, onStart, onStop, isRecording, timer, onNextQuestion, onPrevQuestion, currentIdx, totalQuestions }) => {
   const fmtTime = (s) =>
     `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 
@@ -19,13 +19,13 @@ const InterviewCard = ({ question, onStart, onStop, isRecording, timer }) => {
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
       style={{
         borderRadius: '1.5rem',
-        border: `1px solid ${isRecording ? 'rgba(251,113,133,0.2)' : 'rgba(56,189,248,0.1)'}`,
-        background: 'rgba(8,20,40,0.85)',
+        border: `1px solid ${isRecording ? 'rgba(225,29,72,0.25)' : 'rgba(148,163,184,0.25)'}`,
+        background: 'rgba(255,255,255,0.95)',
         backdropFilter: 'blur(16px)',
         padding: '1.5rem',
         boxShadow: isRecording
-          ? '0 4px 32px rgba(0,0,0,0.6), 0 0 30px rgba(251,113,133,0.08)'
-          : '0 4px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.02) inset',
+          ? '0 4px 24px rgba(0,0,0,0.08), 0 0 0 1px rgba(225,29,72,0.1)'
+          : '0 1px 3px rgba(0,0,0,0.06), 0 4px 20px rgba(0,0,0,0.04)',
         transition: 'border-color 0.4s ease, box-shadow 0.4s ease',
         position: 'relative',
         overflow: 'hidden',
@@ -51,16 +51,15 @@ const InterviewCard = ({ question, onStart, onStop, isRecording, timer }) => {
             fontSize: '0.6rem',
             letterSpacing: '0.18em',
             textTransform: 'uppercase',
-            color: '#38bdf8',
-            textShadow: '0 0 12px rgba(56,189,248,0.4)',
+            color: '#0ea5e9',
             marginBottom: '0.3rem',
-          }}>Current Question</p>
+          }}>Current Question {totalQuestions > 1 ? `(${currentIdx + 1} of ${totalQuestions})` : ''}</p>
           <h2 style={{
             fontFamily: "'Syne', sans-serif",
             fontWeight: 700,
             fontSize: '1.125rem',
             letterSpacing: '-0.03em',
-            color: '#f0f9ff',
+            color: '#0f172a',
           }}>Interview Prompt</h2>
         </div>
 
@@ -69,14 +68,14 @@ const InterviewCard = ({ question, onStart, onStop, isRecording, timer }) => {
           display: 'flex', alignItems: 'center', gap: '0.4rem',
           padding: '0.35rem 0.75rem',
           borderRadius: '99px',
-          border: '1px solid rgba(52,211,153,0.2)',
-          background: 'rgba(52,211,153,0.06)',
+          border: '1px solid rgba(5,150,105,0.25)',
+          background: 'rgba(5,150,105,0.06)',
         }}>
           <div style={{
             width: 6, height: 6,
             borderRadius: '50%',
-            background: '#34d399',
-            boxShadow: '0 0 6px rgba(52,211,153,0.8)',
+            background: '#059669',
+            boxShadow: '0 0 6px rgba(5,150,105,0.4)',
             animation: 'recordPulse 1.8s ease-in-out infinite',
           }} />
           <span style={{
@@ -91,31 +90,75 @@ const InterviewCard = ({ question, onStart, onStop, isRecording, timer }) => {
       {/* Question text */}
       <div style={{
         borderRadius: '1rem',
-        border: '1px solid rgba(56,189,248,0.07)',
-        background: 'rgba(2,6,15,0.5)',
+        border: '1px solid rgba(148,163,184,0.2)',
+        background: 'rgba(248,250,252,0.9)',
         padding: '1.125rem',
         marginBottom: '1.5rem',
         position: 'relative',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '1rem',
+        minHeight: '80px',
       }}>
-        {/* Quote mark */}
-        <span style={{
-          position: 'absolute',
-          top: '0.5rem', left: '0.875rem',
-          fontFamily: "'Syne', sans-serif",
-          fontSize: '2rem',
-          color: 'rgba(56,189,248,0.12)',
-          lineHeight: 1,
-          fontWeight: 800,
-          userSelect: 'none',
-        }}>"</span>
-        <p style={{
-          fontFamily: "'DM Sans', sans-serif",
-          fontSize: '0.9375rem',
-          lineHeight: 1.75,
-          color: '#94a3b8',
-          paddingTop: '0.5rem',
-          paddingLeft: '0.5rem',
-        }}>{question}</p>
+        <div style={{ position: 'relative', flex: 1, paddingLeft: '0.5rem' }}>
+          {/* Quote mark */}
+          <span style={{
+            position: 'absolute',
+            top: '-0.25rem', left: '-0.25rem',
+            fontFamily: "'Syne', sans-serif",
+            fontSize: '2rem',
+            color: 'rgba(14,165,233,0.15)',
+            lineHeight: 1,
+            fontWeight: 800,
+            userSelect: 'none',
+          }}>"</span>
+          <p style={{
+            fontFamily: "'DM Sans', sans-serif",
+            fontSize: '0.9375rem',
+            lineHeight: 1.75,
+            color: '#475569',
+            paddingTop: '0.5rem',
+          }}>{question}</p>
+        </div>
+
+        {/* Navigation Arrows */}
+        {totalQuestions > 1 && (
+          <div style={{ display: 'flex', gap: '0.25rem', flexShrink: 0 }}>
+            <button
+              onClick={onPrevQuestion}
+              disabled={!onPrevQuestion}
+              style={{
+                cursor: onPrevQuestion ? 'pointer' : 'default',
+                opacity: onPrevQuestion ? 1 : 0.3,
+                border: 'none',
+                background: 'rgba(14,165,233,0.1)',
+                borderRadius: '50%',
+                color: '#0ea5e9',
+                width: '32px', height: '32px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '1rem'
+              }}>
+              ←
+            </button>
+            <button
+              onClick={onNextQuestion}
+              disabled={!onNextQuestion}
+              style={{
+                cursor: onNextQuestion ? 'pointer' : 'default',
+                opacity: onNextQuestion ? 1 : 0.3,
+                border: 'none',
+                background: 'rgba(14,165,233,0.1)',
+                borderRadius: '50%',
+                color: '#0ea5e9',
+                width: '32px', height: '32px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '1rem'
+              }}>
+              →
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Timer + Controls */}
@@ -127,14 +170,14 @@ const InterviewCard = ({ question, onStart, onStop, isRecording, timer }) => {
             fontSize: '0.6rem',
             letterSpacing: '0.14em',
             textTransform: 'uppercase',
-            color: '#1e293b',
+            color: '#64748b',
           }}>Timer</span>
           <span style={{
             fontFamily: "'JetBrains Mono', monospace",
             fontSize: '1.75rem',
             fontWeight: 700,
-            color: isRecording ? '#fb7185' : '#1e3a5f',
-            textShadow: isRecording ? '0 0 20px rgba(251,113,133,0.5)' : 'none',
+            color: isRecording ? '#e11d48' : '#0f172a',
+            textShadow: isRecording ? '0 0 12px rgba(225,29,72,0.3)' : 'none',
             transition: 'color 0.3s ease, text-shadow 0.3s ease',
             letterSpacing: '-0.02em',
           }}>
@@ -159,25 +202,25 @@ const InterviewCard = ({ question, onStart, onStop, isRecording, timer }) => {
                 padding: '0.65rem 1.375rem',
                 borderRadius: '99px',
                 border: 'none',
-                background: 'linear-gradient(135deg, #34d399, #059669)',
-                color: '#022c22',
+                background: 'linear-gradient(135deg, #059669, #047857)',
+                color: '#fff',
                 fontFamily: "'DM Sans', sans-serif",
                 fontWeight: 700,
                 fontSize: '0.875rem',
                 cursor: 'pointer',
-                boxShadow: '0 0 22px rgba(52,211,153,0.35), 0 4px 14px rgba(0,0,0,0.4)',
+                boxShadow: '0 2px 12px rgba(5,150,105,0.35)',
                 transition: 'all 0.25s ease',
                 position: 'relative',
                 overflow: 'hidden',
               }}
-              whileHover={{ scale: 1.03, boxShadow: '0 0 36px rgba(52,211,153,0.5), 0 6px 20px rgba(0,0,0,0.5)' }}
+              whileHover={{ scale: 1.03, boxShadow: '0 4px 20px rgba(5,150,105,0.4)' }}
               whileTap={{ scale: 0.97 }}
             >
               <div style={{
                 width: 8, height: 8,
                 borderRadius: '50%',
-                background: '#022c22',
-                opacity: 0.7,
+                background: '#fff',
+                opacity: 0.9,
               }} />
               Start Recording
             </motion.button>
@@ -205,14 +248,14 @@ const InterviewCard = ({ question, onStart, onStop, isRecording, timer }) => {
                 boxShadow: '0 0 22px rgba(251,113,133,0.4), 0 4px 14px rgba(0,0,0,0.4)',
                 transition: 'all 0.25s ease',
               }}
-              whileHover={{ scale: 1.03, boxShadow: '0 0 36px rgba(251,113,133,0.55), 0 6px 20px rgba(0,0,0,0.5)' }}
+              whileHover={{ scale: 1.03, boxShadow: '0 4px 20px rgba(225,29,72,0.45)' }}
               whileTap={{ scale: 0.97 }}
             >
               <div style={{
                 width: 8, height: 8,
                 borderRadius: '2px',
-                background: '#fff0f3',
-                opacity: 0.8,
+                background: '#fff',
+                opacity: 0.9,
               }} />
               Stop & Submit
             </motion.button>

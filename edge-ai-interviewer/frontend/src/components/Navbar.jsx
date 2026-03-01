@@ -10,6 +10,7 @@ const Navbar = () => {
 
   const links = [
     { to: '/', label: 'Home' },
+    { to: '/register', label: 'Register' },
     { to: '/interview', label: 'Interview' },
   ]
 
@@ -24,10 +25,11 @@ const Navbar = () => {
       position: 'sticky',
       top: 0,
       zIndex: 200,
-      background: 'rgba(2, 4, 9, 0.78)',
+      background: 'rgba(255, 255, 255, 0.88)',
       backdropFilter: 'blur(20px) saturate(1.8)',
       WebkitBackdropFilter: 'blur(20px) saturate(1.8)',
-      borderBottom: '1px solid rgba(56,189,248,0.08)',
+      borderBottom: '1px solid rgba(148,163,184,0.25)',
+      boxShadow: '0 1px 0 rgba(0,0,0,0.04)',
     }}>
       <div style={{
         maxWidth: 1280,
@@ -44,11 +46,12 @@ const Navbar = () => {
           <div style={{
             width: 28, height: 28,
             borderRadius: '50%',
-            background: 'linear-gradient(135deg, #38bdf8 0%, #34d399 100%)',
-            boxShadow: '0 0 14px rgba(56,189,248,0.45)',
+            background: 'linear-gradient(135deg, #0ea5e9 0%, #059669 100%)',
+            boxShadow: '0 2px 12px rgba(14,165,233,0.35)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease',
           }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#020d18" strokeWidth="2.5" strokeLinecap="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
               <circle cx="12" cy="12" r="3" />
               <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
             </svg>
@@ -58,7 +61,7 @@ const Navbar = () => {
             fontWeight: 800,
             fontSize: '1rem',
             letterSpacing: '-0.04em',
-            background: 'linear-gradient(135deg, #38bdf8 0%, #34d399 100%)',
+            background: 'linear-gradient(135deg, #0ea5e9 0%, #059669 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
@@ -70,7 +73,11 @@ const Navbar = () => {
         {/* Nav links */}
         <nav style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
           {links.map(({ to, label }) => {
-            const active = location.pathname === to
+            const isInterviewRoute =
+              to === '/interview' &&
+              (location.pathname.startsWith('/interview') ||
+               location.pathname.startsWith('/result'))
+            const active = isInterviewRoute || location.pathname === to
             return (
               <Link
                 key={to}
@@ -84,8 +91,8 @@ const Navbar = () => {
                   textDecoration: 'none',
                   padding: '0.35rem 0.75rem',
                   borderRadius: '0.5rem',
-                  color: active ? '#38bdf8' : hovered === to ? '#38bdf8' : '#64748b',
-                  background: active ? 'rgba(56,189,248,0.07)' : 'transparent',
+                  color: active ? '#0ea5e9' : hovered === to ? '#0ea5e9' : '#64748b',
+                  background: active ? 'rgba(14,165,233,0.08)' : hovered === to ? 'rgba(14,165,233,0.05)' : 'transparent',
                   transition: 'all 0.2s ease',
                   position: 'relative',
                 }}
@@ -96,7 +103,7 @@ const Navbar = () => {
                     position: 'absolute',
                     bottom: 0, left: '0.75rem', right: '0.75rem',
                     height: 1,
-                    background: 'linear-gradient(90deg, transparent, #38bdf8, transparent)',
+                    background: 'linear-gradient(90deg, transparent, #0ea5e9, transparent)',
                     borderRadius: 99,
                   }} />
                 )}
@@ -121,21 +128,24 @@ const Navbar = () => {
                 style={{
                   fontSize: '0.75rem',
                   color: '#64748b',
-                  background: 'transparent',
-                  border: '1px solid rgba(148,163,184,0.15)',
+                  background: 'rgba(255,255,255,0.9)',
+                  border: '1px solid rgba(148,163,184,0.3)',
                   borderRadius: '0.5rem',
                   padding: '0.3rem 0.7rem',
                   cursor: 'pointer',
                   fontFamily: "'DM Sans', sans-serif",
                   transition: 'all 0.2s ease',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
                 }}
                 onMouseEnter={e => {
-                  e.target.style.borderColor = 'rgba(251,113,133,0.4)'
-                  e.target.style.color = '#fb7185'
+                  e.currentTarget.style.borderColor = 'rgba(225,29,72,0.5)'
+                  e.currentTarget.style.color = '#e11d48'
+                  e.currentTarget.style.background = 'rgba(225,29,72,0.06)'
                 }}
                 onMouseLeave={e => {
-                  e.target.style.borderColor = 'rgba(148,163,184,0.15)'
-                  e.target.style.color = '#64748b'
+                  e.currentTarget.style.borderColor = 'rgba(148,163,184,0.3)'
+                  e.currentTarget.style.color = '#64748b'
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.9)'
                 }}
               >
                 Sign out
@@ -149,20 +159,20 @@ const Navbar = () => {
                 fontWeight: 600,
                 fontFamily: "'DM Sans', sans-serif",
                 textDecoration: 'none',
-                color: '#020d18',
-                background: 'linear-gradient(135deg, #38bdf8, #0ea5e9)',
+                color: '#fff',
+                background: 'linear-gradient(135deg, #0ea5e9, #0284c7)',
                 padding: '0.35rem 0.9rem',
                 borderRadius: '99px',
-                boxShadow: '0 0 16px rgba(56,189,248,0.3)',
+                boxShadow: '0 2px 12px rgba(14,165,233,0.35)',
                 transition: 'all 0.2s ease',
               }}
               onMouseEnter={e => {
-                e.target.style.boxShadow = '0 0 28px rgba(56,189,248,0.5)'
-                e.target.style.transform = 'translateY(-1px)'
+                e.currentTarget.style.boxShadow = '0 4px 20px rgba(14,165,233,0.45)'
+                e.currentTarget.style.transform = 'translateY(-1px)'
               }}
               onMouseLeave={e => {
-                e.target.style.boxShadow = '0 0 16px rgba(56,189,248,0.3)'
-                e.target.style.transform = 'translateY(0)'
+                e.currentTarget.style.boxShadow = '0 2px 12px rgba(14,165,233,0.35)'
+                e.currentTarget.style.transform = 'translateY(0)'
               }}
             >
               Sign in

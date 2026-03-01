@@ -12,8 +12,8 @@ function App() {
         minHeight: '100vh',
         display: 'flex',
         flexDirection: 'column',
-        background: '#020409',
-        color: '#f0f9ff',
+        background: '#f8fafc',
+        color: '#0f172a',
       }}>
         <Navbar />
         <main style={{ flex: 1 }}>
@@ -27,26 +27,27 @@ function App() {
 
         {/* Footer */}
         <footer style={{
-          borderTop: '1px solid rgba(56,189,248,0.05)',
+          borderTop: '1px solid rgba(148,163,184,0.25)',
           padding: '1.25rem 2rem',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
           gap: '0.75rem',
+          background: 'rgba(255,255,255,0.6)',
         }}>
           <span style={{
             fontFamily: "'JetBrains Mono', monospace",
             fontSize: '0.65rem',
             letterSpacing: '0.1em',
-            color: '#1e293b',
+            color: '#64748b',
           }}>
             InterviewAI · Edge-based · All processing local
           </span>
           <span style={{
             fontFamily: "'JetBrains Mono', monospace",
             fontSize: '0.65rem',
-            color: '#0f172a',
+            color: '#94a3b8',
           }}>
             v1.0.0
           </span>
