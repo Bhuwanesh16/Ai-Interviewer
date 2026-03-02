@@ -1,34 +1,8 @@
 import { useLocation, useParams, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import ScoreCard from '../components/ScoreCard'
 import RadarChart from '../components/RadarChart'
 import { fetchResult } from '../services/api'
-
-const getSuggestions = (scores) => {
-  const tips = []
-  if (scores.facial != null && scores.facial < 0.7) {
-    tips.push('Try to maintain more consistent facial expressions — practice smiling naturally and keeping eye contact with the camera.')
-  }
-  if (scores.speech != null && scores.speech < 0.7) {
-    tips.push('Slow down slightly and enunciate more clearly. Practice pausing between key points for better delivery.')
-  }
-  if (scores.nlp != null && scores.nlp < 0.7) {
-    tips.push('Focus on answering the question more directly. Use the STAR method (Situation, Task, Action, Result) for structured responses.')
-  }
-  if (scores.facial != null && scores.facial >= 0.7) {
-    tips.push('Your facial expressiveness is strong — keep maintaining natural eye contact and engaged expressions.')
-  }
-  if (scores.speech != null && scores.speech >= 0.7) {
-    tips.push('Your speech clarity is solid. Try varying your pace to emphasize key points for even more impact.')
-  }
-  if (scores.nlp != null && scores.nlp >= 0.7) {
-    tips.push('Your content relevance is good. Use concrete impact metrics (%, time saved, revenue) to strengthen your answers further.')
-  }
-  // Always add a general tip
-  tips.push('Mirror the role description language to increase perceived fit with the position.')
-  return tips.slice(0, 4) // cap at 4 suggestions
-}
 
 const ScoreMeter = ({ label, score, color, glow, delay = 0 }) => {
   const pct = Math.round((score || 0) * 100)
@@ -90,6 +64,9 @@ const Result = () => {
   const [transcript, setTranscript] = useState(
     location.state?.transcript || ''
   )
+  const [feedback, setFeedback] = useState(location.state?.feedback || '')
+  const [suggestions, setSuggestions] = useState(location.state?.suggestions || [])
+  const [metrics, setMetrics] = useState(location.state?.metrics || {})
   const [loadingResult, setLoadingResult] = useState(!location.state)
 
   useEffect(() => {
@@ -102,6 +79,9 @@ const Result = () => {
         if (last) {
           setScores({ facial: last.facial_score, speech: last.speech_score, nlp: last.nlp_score, final: last.final_score })
           setTranscript(last.transcript)
+          setFeedback(last.feedback || '')
+          setSuggestions(last.suggestions || [])
+          setMetrics(last.metrics || {})
         }
       } catch (err) {
         console.error('Failed to load result', err)
@@ -113,11 +93,8 @@ const Result = () => {
   }, [sessionId, location.state])
 
   const finalPct = Math.round((scores.final || 0) * 100)
-
-  const scoreColor = finalPct >= 80 ? '#34d399' : finalPct >= 60 ? '#38bdf8' : '#fb7185'
-  const scoreGlow = finalPct >= 80 ? 'rgba(52,211,153,0.6)' : finalPct >= 60 ? 'rgba(56,189,248,0.6)' : 'rgba(251,113,133,0.6)'
-
-  const suggestions = getSuggestions(scores)
+  const scoreColor = finalPct >= 80 ? '#10b981' : finalPct >= 60 ? '#0ea5e9' : '#f43f5e'
+  const scoreGlow = finalPct >= 80 ? 'rgba(16,185,129,0.3)' : finalPct >= 60 ? 'rgba(14,165,233,0.3)' : 'rgba(244,63,94,0.3)'
 
   if (loadingResult) {
     return (
@@ -221,9 +198,9 @@ const Result = () => {
         gap: '1rem',
       }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <ScoreMeter label="Emotion signal" score={scores.facial} color="#34d399" glow="rgba(52,211,153,0.5)" delay={0.1} />
-          <ScoreMeter label="Speech clarity" score={scores.speech} color="#38bdf8" glow="rgba(56,189,248,0.5)" delay={0.2} />
-          <ScoreMeter label="Content relevance" score={scores.nlp} color="#a78bfa" glow="rgba(167,139,250,0.5)" delay={0.3} />
+          <ScoreMeter label="Emotion signal" score={scores.facial} color="#10b981" glow="rgba(16,185,129,0.4)" delay={0.1} />
+          <ScoreMeter label="Speech clarity" score={scores.speech} color="#0ea5e9" glow="rgba(14,165,233,0.4)" delay={0.2} />
+          <ScoreMeter label="Content relevance" score={scores.nlp} color="#8b5cf6" glow="rgba(139,92,246,0.4)" delay={0.3} />
         </div>
 
         <motion.div
@@ -246,13 +223,13 @@ const Result = () => {
         </motion.div>
       </div>
 
-      {/* ── Transcript + Suggestions ── */}
+      {/* ── Transcript + Feedback ── */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
         gap: '1rem',
       }}>
-        {/* Transcript */}
+        {/* Feedback Section */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -266,23 +243,54 @@ const Result = () => {
             boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
           }}
         >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.875rem' }}>
+            <p style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: '0.6rem',
+              letterSpacing: '0.15em',
+              textTransform: 'uppercase',
+              color: '#64748b',
+            }}>AI Performance Report</p>
+            {metrics.verdict && (
+              <span style={{
+                fontSize: '0.6rem', padding: '2px 8px', borderRadius: 99,
+                background: 'rgba(14,165,233,0.1)', color: '#0ea5e9', fontWeight: 700
+              }}>
+                {metrics.verdict}
+              </span>
+            )}
+          </div>
           <p style={{
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: '0.6rem',
-            letterSpacing: '0.15em',
-            textTransform: 'uppercase',
-            color: '#64748b',
-            marginBottom: '0.875rem',
-          }}>Transcript</p>
-          <p style={{
-            fontSize: '0.8125rem',
-            lineHeight: 1.85,
-            color: '#475569',
-            whiteSpace: 'pre-wrap',
-            borderLeft: '2px solid rgba(14,165,233,0.3)',
-            paddingLeft: '0.875rem',
-            fontFamily: "'DM Sans', sans-serif",
-          }}>{transcript || 'No transcript available.'}</p>
+            fontSize: '0.925rem',
+            lineHeight: 1.7,
+            color: '#1e293b',
+            fontWeight: 500,
+            marginBottom: '1rem',
+          }}>{feedback || 'Analyzing your performance results...'}</p>
+
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
+            gap: '0.75rem', marginTop: '1.25rem', paddingTop: '1.25rem',
+            borderTop: '1px solid rgba(148,163,184,0.15)'
+          }}>
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: '0.6rem', color: '#64748b', marginBottom: '0.25rem' }}>WORD COUNT</p>
+              <p style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>{metrics.word_count || 0}</p>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: '0.6rem', color: '#64748b', marginBottom: '0.25rem' }}>FILLER RATIO</p>
+              <p style={{ fontSize: '1.125rem', fontWeight: 800, color: '#f59e0b' }}>{metrics.filler_word_frequency || '0.00'}</p>
+              <p style={{ fontSize: '0.55rem', color: '#94a3b8' }}>({metrics.filler_count || 0} hits)</p>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: '0.6rem', color: '#64748b', marginBottom: '0.25rem' }}>PACE</p>
+              <p style={{ fontSize: '1rem', fontWeight: 700, color: '#0ea5e9' }}>{metrics.speaking_rate || 'Optimal'}</p>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: '0.6rem', color: '#64748b', marginBottom: '0.25rem' }}>SENTIMENT</p>
+              <p style={{ fontSize: '0.8rem', fontWeight: 600, color: '#10b981' }}>{metrics.sentiment_profile || 'Professional'}</p>
+            </div>
+          </div>
         </motion.div>
 
         {/* Suggestions */}
@@ -306,7 +314,7 @@ const Result = () => {
             textTransform: 'uppercase',
             color: '#64748b',
             marginBottom: '0.875rem',
-          }}>Suggested improvements</p>
+          }}>Personalized Improvements</p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {suggestions.map((tip, i) => (
@@ -425,6 +433,39 @@ const Result = () => {
           </div>
         </motion.div>
       </div>
+
+      {/* Transcript */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5, duration: 0.5 }}
+        style={{
+          borderRadius: '1.25rem',
+          border: '1px solid rgba(148,163,184,0.25)',
+          background: 'rgba(255,255,255,0.95)',
+          backdropFilter: 'blur(12px)',
+          padding: '1.25rem',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+        }}
+      >
+        <p style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: '0.6rem',
+          letterSpacing: '0.15em',
+          textTransform: 'uppercase',
+          color: '#64748b',
+          marginBottom: '0.875rem',
+        }}>Full Transcript</p>
+        <p style={{
+          fontSize: '0.8125rem',
+          lineHeight: 1.85,
+          color: '#475569',
+          whiteSpace: 'pre-wrap',
+          borderLeft: '2px solid rgba(14,165,233,0.3)',
+          paddingLeft: '0.875rem',
+          fontFamily: "'DM Sans', sans-serif",
+        }}>{transcript || 'No transcript available.'}</p>
+      </motion.div>
     </div>
   )
 }

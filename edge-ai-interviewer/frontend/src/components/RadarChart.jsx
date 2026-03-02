@@ -49,9 +49,16 @@ const RadarChart = ({ scores }) => {
               name="Score"
               dataKey="value"
               stroke="#0ea5e9"
-              fill="#0ea5e9"
-              fillOpacity={0.35}
+              strokeWidth={2}
+              fill="url(#scoreGradient)"
+              fillOpacity={0.65}
             />
+            <defs>
+              <linearGradient id="scoreGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.8} />
+                <stop offset="95%" stopColor="#10b981" stopOpacity={0.5} />
+              </linearGradient>
+            </defs>
           </ReRadarChart>
         </ResponsiveContainer>
       </div>

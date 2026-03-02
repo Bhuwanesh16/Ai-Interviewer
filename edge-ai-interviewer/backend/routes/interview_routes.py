@@ -11,6 +11,7 @@ from services.speech_service import speech_service
 from services.transcription_service import transcription_service
 from services.nlp_service import nlp_service
 from services.scoring_service import scoring_service
+from services.report_service import report_service
 from utils.video_utils import save_uploaded_video
 from utils.audio_utils import save_uploaded_audio
 
@@ -151,6 +152,13 @@ def submit_interview():
 
     db.session.commit()
 
+    # Generate detailed feedback
+    report = report_service.generate_feedback(
+        {"facial": response.facial_score, "speech": response.speech_score, "nlp": response.nlp_score, "final": response.final_score},
+        response.transcript,
+        speech_details=speech_result
+    )
+
     return (
         jsonify(
             {
@@ -163,6 +171,10 @@ def submit_interview():
                     "final": response.final_score,
                 },
                 "transcript": response.transcript,
+                "feedback": report["overall_feedback"],
+                "verdict": report.get("verdict"),
+                "suggestions": report["suggestions"],
+                "metrics": report["key_metrics"]
             }
         ),
         201,

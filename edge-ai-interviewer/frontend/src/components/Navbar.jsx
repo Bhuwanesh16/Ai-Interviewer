@@ -42,29 +42,27 @@ const Navbar = () => {
         gap: '1.5rem',
       }}>
         {/* Brand */}
-        <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <div style={{
-            width: 28, height: 28,
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #0ea5e9 0%, #059669 100%)',
-            boxShadow: '0 2px 12px rgba(14,165,233,0.35)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-          }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
-            </svg>
-          </div>
+        <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          <img
+            src="/logo.png"
+            alt="InterviewAI Logo"
+            style={{
+              width: 32, height: 32,
+              borderRadius: '0.6rem',
+              boxShadow: '0 4px 12px rgba(14,165,233,0.25)',
+              background: '#fff',
+              padding: '2px',
+              transition: 'transform 0.2s ease',
+            }}
+            onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+            onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+          />
           <span style={{
             fontFamily: "'Syne', sans-serif",
             fontWeight: 800,
-            fontSize: '1rem',
+            fontSize: '1.125rem',
             letterSpacing: '-0.04em',
-            background: 'linear-gradient(135deg, #0ea5e9 0%, #059669 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
+            color: '#0f172a',
           }}>
             InterviewAI
           </span>
@@ -76,7 +74,7 @@ const Navbar = () => {
             const isInterviewRoute =
               to === '/interview' &&
               (location.pathname.startsWith('/interview') ||
-               location.pathname.startsWith('/result'))
+                location.pathname.startsWith('/result'))
             const active = isInterviewRoute || location.pathname === to
             return (
               <Link

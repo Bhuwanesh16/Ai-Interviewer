@@ -35,14 +35,14 @@ const Home = () => {
 
   const liveMetrics = latestResponse
     ? [
-      { label: 'Emotion', value: latestResponse.facial_score?.toFixed(2) || '—', color: '#34d399', glow: 'rgba(52,211,153,0.5)', sub: 'Facial expression' },
-      { label: 'Speech', value: latestResponse.speech_score?.toFixed(2) || '—', color: '#38bdf8', glow: 'rgba(56,189,248,0.5)', sub: 'Pace & clarity' },
-      { label: 'Content', value: latestResponse.nlp_score?.toFixed(2) || '—', color: '#a78bfa', glow: 'rgba(167,139,250,0.5)', sub: 'Relevance' },
+      { label: 'Emotion', value: latestResponse.facial_score?.toFixed(2) || '—', color: '#10b981', glow: 'rgba(16,185,129,0.3)', sub: 'Facial expression' },
+      { label: 'Speech', value: latestResponse.speech_score?.toFixed(2) || '—', color: '#0ea5e9', glow: 'rgba(14,165,233,0.3)', sub: 'Pace & clarity' },
+      { label: 'Content', value: latestResponse.nlp_score?.toFixed(2) || '—', color: '#8b5cf6', glow: 'rgba(139,92,246,0.3)', sub: 'Relevance' },
     ]
     : [
-      { label: 'Emotion', value: '—', color: '#34d399', glow: 'rgba(52,211,153,0.5)', sub: 'Facial expression' },
-      { label: 'Speech', value: '—', color: '#38bdf8', glow: 'rgba(56,189,248,0.5)', sub: 'Pace & clarity' },
-      { label: 'Content', value: '—', color: '#a78bfa', glow: 'rgba(167,139,250,0.5)', sub: 'Relevance' },
+      { label: 'Emotion', value: '—', color: '#10b981', glow: 'rgba(16,185,129,0.3)', sub: 'Facial expression' },
+      { label: 'Speech', value: '—', color: '#0ea5e9', glow: 'rgba(14,165,233,0.3)', sub: 'Pace & clarity' },
+      { label: 'Content', value: '—', color: '#8b5cf6', glow: 'rgba(139,92,246,0.3)', sub: 'Relevance' },
     ]
 
   const overallScore = latestSession?.overall_score

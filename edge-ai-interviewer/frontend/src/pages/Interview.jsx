@@ -85,7 +85,13 @@ const Interview = () => {
           formData.append('edge_speech_score', avgSpeechScore.toString())
           const { data } = await submitInterview(formData)
           navigate(`/result/${data.session_id}`, {
-            state: { scores: data.scores, transcript: data.transcript },
+            state: {
+              scores: data.scores,
+              transcript: data.transcript,
+              feedback: data.feedback,
+              suggestions: data.suggestions,
+              metrics: data.metrics
+            },
           })
         } catch (err) {
           console.error(err)

@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify
 
 from models.session_model import InterviewSession
+from services.report_service import report_service
 
 result_bp = Blueprint("results", __name__)
 
@@ -13,6 +14,11 @@ def get_result(session_id):
 
     responses_data = []
     for r in session.responses:
+        # Generate feedback on the fly
+        report = report_service.generate_feedback(
+            {"facial": r.facial_score, "speech": r.speech_score, "nlp": r.nlp_score, "final": r.final_score},
+            r.transcript or ""
+        )
         responses_data.append(
             {
                 "id": str(r.id),
@@ -23,6 +29,10 @@ def get_result(session_id):
                 "nlp_score": r.nlp_score,
                 "final_score": r.final_score,
                 "created_at": r.created_at.isoformat(),
+                "feedback": report["overall_feedback"],
+                "verdict": report.get("verdict"),
+                "suggestions": report["suggestions"],
+                "metrics": report["key_metrics"]
             }
         )
 
@@ -42,4 +52,3 @@ def get_result(session_id):
         ),
         200,
     )
-
