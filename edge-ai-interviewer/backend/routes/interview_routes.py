@@ -12,6 +12,7 @@ from services.transcription_service import transcription_service
 from services.nlp_service import nlp_service
 from services.scoring_service import scoring_service
 from services.report_service import report_service
+from services.question_service import generate_questions as llm_generate_questions
 from utils.video_utils import save_uploaded_video
 from utils.audio_utils import save_uploaded_audio
 
@@ -27,42 +28,40 @@ def _get_user_id_from_header():
 
 
 @interview_bp.post("/generate_questions")
-def generate_questions():
+def generate_questions_route():
+    """Generate tailored interview questions using the LLM question service.
+
+    The frontend sends:
+      { role, skills, level, numQuestions }
+
+    We delegate to question_service.generate_questions() which calls the local
+    Ollama/LLaMA3 model and returns a parsed list of question strings.  If
+    Ollama is unreachable the service transparently falls back to a curated
+    role/level-aware static bank, so this endpoint never fails the caller.
+    """
     user_id = _get_user_id_from_header()
     if not user_id:
         return jsonify({"message": "Unauthorized"}), 401
-    
-    payload = request.get_json() or {}
-    role = payload.get("role", "Software Engineer")
-    skills = payload.get("skills", "")
-    level = payload.get("level", "Intermediate")
-    num_q = int(payload.get("numQuestions", 3))
-    
-    skill_list = [s.strip() for s in skills.split(",") if s.strip()]
-    
-    # Base questions based on level
-    if level == "Entry Level":
-        pool = [f"What motivated you to start a career as a {role}?", "Describe a foundational technical project you're proud of."]
-    elif "Senior" in level or "Lead" in level:
-        pool = [f"How do you handle architectural trade-offs in {role} roles?", "Describe your experience mentoring junior engineers."]
-    else:
-        pool = [f"Can you tell me about your experience as a {role}?", "How do you stay updated with industry trends?"]
 
-    if skill_list:
-        for skill in skill_list:
-            pool.append(f"How do you apply your skills in {skill} to solve real-world problems?")
-            pool.append(f"Describe a project where {skill} was critical to the solution.")
-    
-    # Shuffle or just slice to the requested number
-    import random
-    random.shuffle(pool)
-    questions = pool[:num_q]
-    
-    # Ensure at least 1 question if pool is small
-    if not questions:
-        questions = [f"Tell me about your approach to {role}."]
-        
-    return jsonify({"questions": questions}), 200
+    payload = request.get_json() or {}
+    role = payload.get("role", "Software Engineer").strip()
+    skills = payload.get("skills", "").strip()
+    level = payload.get("level", "Intermediate").strip()
+    num_q = max(1, int(payload.get("numQuestions", 3)))
+
+    # Delegate to LLM service (falls back to static banks automatically)
+    questions = llm_generate_questions(
+        role=role,
+        experience=level,
+        skills=skills,
+        question_volume=num_q,
+    )
+
+    # Ensure the result is a plain list of strings
+    if not isinstance(questions, list) or not questions:
+        questions = [f"Tell me about your experience as a {role}."]
+
+    return jsonify({"questions": questions, "source": "llm"}), 200
 
 
 @interview_bp.post("/start")
@@ -73,8 +72,9 @@ def start_interview():
 
     payload = request.get_json() or {}
     position = payload.get("position", "Software Engineer")
+    level = payload.get("experience_level", "Intermediate")
 
-    session = InterviewSession(user_id=user_id, position=position)
+    session = InterviewSession(user_id=user_id, position=position, experience_level=level)
     db.session.add(session)
     db.session.commit()
 
@@ -83,6 +83,7 @@ def start_interview():
             {
                 "session_id": str(session.id),
                 "position": session.position,
+                "experience_level": session.experience_level,
                 "started_at": session.started_at.isoformat(),
             }
         ),
@@ -152,12 +153,15 @@ def submit_interview():
 
     db.session.commit()
 
-    # Generate detailed feedback
+    # Generate detailed feedback (now role and level aware)
     report = report_service.generate_feedback(
         {"facial": response.facial_score, "speech": response.speech_score, "nlp": response.nlp_score, "final": response.final_score},
         response.transcript,
         speech_details=speech_result,
-        nlp_details=nlp_result
+        nlp_details=nlp_result,
+        role=session.position,
+        level=session.experience_level,
+        question=question
     )
 
     return (

@@ -3,103 +3,132 @@ Report generation service.
 
 Generates detailed, professional feedback and actionable suggestions 
 based on scores (facial, speech, NLP) and semantic analysis of the transcript.
+Attempts LLM-based personalized feedback first, with a rich rules-based fallback.
 """
 
+import random
 from typing import Dict, List
+from services.question_service import generate_ai_feedback
 
 
 class ReportService:
-    def generate_feedback(self, scores: Dict[str, float], transcript: str, speech_details: Dict[str, any] = None, nlp_details: Dict[str, any] = None) -> Dict[str, any]:
+    def generate_feedback(
+        self, 
+        scores: Dict[str, float], 
+        transcript: str, 
+        speech_details: Dict[str, any] = None, 
+        nlp_details: Dict[str, any] = None,
+        role: str = "Candidate",
+        level: str = "Intermediate",
+        question: str = ""
+    ) -> Dict[str, any]:
         facial = scores.get("facial", 0)
         speech = scores.get("speech", 0)
         nlp = scores.get("nlp", 0)
         final = scores.get("final", 0)
 
-        feedback = []
-        suggestions = []
-
         is_fallback_transcript = any(x in transcript for x in ["Transcription unavailable", "(Speech parsing error", "(Audio file missing)"])
         
-        # 1. Content Validity & Semantic Alignment (Industrial Standard)
-        is_valid = nlp_details.get("is_valid", True) if nlp_details else True
-        nlp_metrics = nlp_details.get("metrics", {}) if nlp_details else {}
-        
-        if is_fallback_transcript:
-            feedback.append("We couldn't process the audio content for a full semantic analysis. Ensure your audio is clear.")
-            suggestions.append("Check your microphone settings and minimize background noise for better automated feedback.")
-        elif not is_valid:
-            feedback.append("The response relevance was flagged as weak. Ensure you focus on directly answering the specific question asked.")
-            suggestions.append("Structure your answer by first restating the core problem briefly before diving into your solution.")
-        elif nlp >= 0.8:
-            feedback.append("Excellent content alignment. Your answer demonstrated deep expertise and addressed technical keywords effectively.")
-        else:
-            feedback.append("Good response foundation. Strengthening your use of industry-specific terminology would enhance the technical depth of your answer.")
+        # --- Attempt AI-Led Feedback First ---
+        if not is_fallback_transcript and len(transcript.strip()) > 30:
+            ai_data = generate_ai_feedback(role, level, question, transcript, scores)
+            if ai_data and ai_data.get("feedback"):
+                # Success! Return AI feedback
+                return self._finalize_report(scores, transcript, ai_data["feedback"], ai_data["suggestions"], speech_details, nlp_details, is_fallback_transcript)
 
-        # 2. Speech Clarity & Signal Quality
+        # --- Rules-Based Fallback (Dynamic & Real) ---
+        feedback_points = []
+        suggestions = []
+        
+        nlp_metrics = nlp_details.get("metrics", {}) if nlp_details else {}
+        is_valid = nlp_details.get("is_valid", True) if nlp_details else True
+        word_count = nlp_metrics.get("word_count", 0 if is_fallback_transcript else len(transcript.split()))
+
+        # 1. Content Evaluation
+        if is_fallback_transcript:
+            feedback_points.append("Audio capture encountered technical hurdles, preventing a full semantic analysis of your response.")
+            suggestions.append("Verify your hardware connection and test your microphone in the setup screen to ensure clear recording.")
+        elif not is_valid or nlp < 0.3:
+            feedback_points.append("The response lacked direct alignment with the specific engineering constraints mentioned in the question.")
+            suggestions.append("Focus on the 'Action' phase of your answer; clearly define the steps you took rather than speaking in generalities.")
+        elif nlp >= 0.85:
+            feedback_points.append(random.choice([
+                "Your technical depth was outstanding, correctly identifying and addressing the core system design trade-offs.",
+                "Excellent precision in your answer. You utilized industry-standard terminology that demonstrated high seniority.",
+                "Deep conceptual mastery detected. Your response was well-structured and directly hit all key technical requirements."
+            ]))
+        else:
+            feedback_points.append("Your response covered the basics well, though integrating more specific technical implementation details would strengthen your authority.")
+
+        # 2. Delivery & Communication
         speech_metrics = speech_details.get("metrics", {}) if speech_details else {}
         clarity = speech_metrics.get("clarity", "Unknown")
         pace = speech_metrics.get("pace", "Optimal")
         
         if clarity == "Low Quality":
-            feedback.append("Significant background noise or low audio volume detected, which may affect automated analysis.")
-            suggestions.append("Ensure you are in a quiet environment and using a high-quality microphone for the best results.")
+            feedback_points.append("The audio signal had significant interference. In a real interview, this would make it difficult for interviewers to follow your logic.")
         
         if pace == "Fast":
-            feedback.append("Your speaking rate was slightly rapid, which can make complex points harder to follow.")
-            suggestions.append("Consciously slow down during key technical segments and use pauses for emphasis.")
+            feedback_points.append("Your pace was somewhat rushed. Slowing down by about 10-15% will help your more complex technical points land with the interviewer.")
+            suggestions.append("Apply intentional pauses after making a significant technical point to allow the interviewer to digest the information.")
         elif pace == "Slow":
-            feedback.append("Your delivery was somewhat measured. Aiming for a slightly more dynamic pace could improve conversational engagement.")
+            feedback_points.append("Your delivery was very deliberate. While clear, a slightly more energetic pace would convey more enthusiasm for the role.")
 
-        # 3. Prosody & Non-verbal Impact
-        prosody = speech_metrics.get("prosody", "Balanced")
-        if prosody == "Monotone":
-            feedback.append("Your vocal tone was relatively flat. Adding more inflection and emphasis can convey passion and confidence.")
-        
-        if facial < 0.5:
-            feedback.append("Facial engagement appeared limited. Maintaining better eye contact with the camera helps build rapport.")
+        # 3. Non-Verbal Impact
+        if facial < 0.4:
+            feedback_points.append("Your facial energy remained relatively low. Demonstrating more engagement visually can help build a stronger connection with the hiring team.")
+        elif facial > 0.8:
+            feedback_points.append("You maintained an excellent professional presence and looked comfortable while explaining complex ideas.")
 
-        # 4. Key Performance Metrics (STAR Hints)
-        # Word count correction: if transcript is empty/fallback, word count is 0
-        word_count = nlp_metrics.get("word_count", 0 if is_fallback_transcript else len(transcript.split()))
-        
-        if not is_fallback_transcript:
-            if word_count > 40 and nlp > 0.6:
-                feedback.append("Good use of the STAR method structure (Situation, Task, Action, Result) detected.")
-            elif word_count < 20:
-                feedback.append("The response was quite concise. Aim for more detailed explanations in formal settings.")
+        # 4. Content Structure
+        if word_count > 60:
+            feedback_points.append("Good narrative stamina. You provided a thorough explanation that allowed for a meaningful evaluation of your approach.")
+        elif 0 < word_count < 25:
+            feedback_points.append("The response was quite brief. Industrial-level technical interviews usually require more elaboration on the 'Result' aspect of your work.")
 
-        # Filler word check
+        # Filler words
         filler_count = nlp_metrics.get("filler_word_count", 0)
-        if filler_count > 4:
-            feedback.append(f"Frequent use of filler words ({filler_count}) may impact perceived authority.")
-            suggestions.append("Use silent pauses to collect your thoughts instead of vocal fillers like 'um' or 'like'.")
+        if filler_count > 5:
+            feedback_points.append(f"The frequency of verbal fillers ('{filler_count}') slightly interrupted the professional flow of your explanation.")
+            suggestions.append("Replace filler words with silent 'thinking pauses' — this actually projects more confidence than filled pauses.")
 
-        # Verdict logic
+        fallback_feedback = " ".join(feedback_points)
+        return self._finalize_report(scores, transcript, fallback_feedback, suggestions, speech_details, nlp_details, is_fallback_transcript)
+
+    def _finalize_report(self, scores, transcript, feedback, suggestions, speech_details, nlp_details, is_fallback_transcript):
+        nlp_metrics = nlp_details.get("metrics", {}) if nlp_details else {}
+        speech_metrics = speech_details.get("metrics", {}) if speech_details else {}
+        final = scores.get("final", 0)
+        is_valid = nlp_details.get("is_valid", True) if nlp_details else True
+        word_count = nlp_metrics.get("word_count", 0 if is_fallback_transcript else len(transcript.split()))
+        filler_count = nlp_metrics.get("filler_word_count", 0)
+
+        # Verdict logic (Consistent)
         if is_fallback_transcript:
             verdict = "Technical Difficulty - Transcription Unavailable"
         elif not is_valid:
-            verdict = "Non-Responsive - Content did not align with the question."
-        elif final > 0.85:
-            verdict = "Outstanding - Role-ready delivery and expertise."
-        elif final > 0.7:
-            verdict = "Professional - Solid industrial standard performance."
-        elif final > 0.5:
-            verdict = "Developing - Capable, with room for delivery polish."
+            verdict = "Non-Responsive - High Divergence"
+        elif final > 0.88:
+            verdict = "Outstanding - Role-Ready Lead"
+        elif final > 0.72:
+            verdict = "Professional - Mid-to-Senior Standard"
+        elif final > 0.55:
+            verdict = "Developing - Capable with Polished Delivery"
         else:
-            verdict = "Needs Practice - Focus on content structure and clarity."
+            verdict = "Needs Refinement - Focus on Structure"
 
         return {
-            "overall_feedback": " ".join(feedback),
+            "overall_feedback": feedback,
             "verdict": verdict,
             "suggestions": list(set(suggestions))[:4],
             "key_metrics": {
                 "word_count": word_count,
-                "filler_word_frequency": f"{ (filler_count / max(word_count, 1)) * 10: .2f}",
+                "filler_word_frequency": f"{(filler_count / max(word_count, 1)) * 10:.2f}",
                 "filler_count": filler_count,
-                "speaking_rate": pace,
-                "clarity_rating": clarity,
+                "speaking_rate": speech_metrics.get("pace", "Optimal"),
+                "clarity_rating": speech_metrics.get("clarity", "High"),
                 "content_validity": "N/A" if is_fallback_transcript else nlp_metrics.get("content_validity", "Confirmed"),
-                "sentiment_profile": "Professional & Balanced" if final > 0.7 else "Developing Clarity"
+                "sentiment_profile": "Professional & Balanced" if final > 0.7 else "Developing Authority"
             }
         }
 

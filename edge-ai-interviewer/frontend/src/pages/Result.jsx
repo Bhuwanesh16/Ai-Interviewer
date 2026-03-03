@@ -229,7 +229,7 @@ const Result = () => {
         gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
         gap: '1rem',
       }}>
-        {/* Feedback Section */}
+        {/* ─── AI Performance Report ─── */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -239,68 +239,169 @@ const Result = () => {
             border: '1px solid rgba(148,163,184,0.25)',
             background: 'rgba(255,255,255,0.95)',
             backdropFilter: 'blur(12px)',
-            padding: '1.25rem',
+            padding: '1.5rem',
             boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1.25rem',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.875rem' }}>
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
             <p style={{
               fontFamily: "'JetBrains Mono', monospace",
               fontSize: '0.6rem',
               letterSpacing: '0.15em',
               textTransform: 'uppercase',
               color: '#64748b',
+              margin: 0,
             }}>AI Performance Report</p>
-            {metrics.verdict && (
-              <span style={{
-                fontSize: '0.6rem', padding: '2px 8px', borderRadius: 99,
-                background: metrics.verdict.includes('Technical') ? 'rgba(244,63,94,0.1)' : 'rgba(14,165,233,0.1)',
-                color: metrics.verdict.includes('Technical') ? '#f43f5e' : '#0ea5e9',
-                fontWeight: 700
-              }}>
-                {metrics.verdict}
-              </span>
-            )}
-          </div>
-          <p style={{
-            fontSize: '0.925rem',
-            lineHeight: 1.7,
-            color: '#1e293b',
-            fontWeight: 500,
-            marginBottom: '1rem',
-          }}>{feedback || 'Analyzing your performance results...'}</p>
 
-          <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
-            gap: '0.75rem', marginTop: '1.25rem', paddingTop: '1.25rem',
-            borderTop: '1px solid rgba(148,163,184,0.15)'
-          }}>
-            <div style={{ textAlign: 'center' }}>
-              <p style={{ fontSize: '0.55rem', color: '#64748b', marginBottom: '0.25rem' }}>WORDS</p>
-              <p style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a' }}>{metrics.word_count || 0}</p>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <p style={{ fontSize: '0.55rem', color: '#64748b', marginBottom: '0.25rem' }}>FILLER %</p>
-              <p style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f59e0b' }}>{metrics.filler_word_frequency || '0.00'}</p>
-              <p style={{ fontSize: '0.5rem', color: '#94a3b8' }}>({metrics.filler_count || 0} hits)</p>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <p style={{ fontSize: '0.55rem', color: '#64748b', marginBottom: '0.25rem' }}>PACE</p>
-              <p style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0ea5e9' }}>{metrics.speaking_rate || 'Optimal'}</p>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <p style={{ fontSize: '0.55rem', color: '#64748b', marginBottom: '0.25rem' }}>CLARITY</p>
-              <p style={{ fontSize: '0.8rem', fontWeight: 700, color: metrics.clarity_rating === 'Low Quality' ? '#f43f5e' : '#10b981' }}>
-                {metrics.clarity_rating || 'High'}
-              </p>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <p style={{ fontSize: '0.55rem', color: '#64748b', marginBottom: '0.25rem' }}>VALIDITY</p>
-              <p style={{ fontSize: '0.8rem', fontWeight: 700, color: metrics.content_validity === 'Confirmed' ? '#10b981' : '#f59e0b' }}>
-                {metrics.content_validity || 'Checked'}
-              </p>
-            </div>
+            {/* Verdict badge — only shown when real verdict present */}
+            {metrics.verdict && (() => {
+              const v = metrics.verdict
+              const isOutstanding = v.includes('Outstanding')
+              const isProfessional = v.includes('Professional')
+              const isDeveloping = v.includes('Developing')
+              const isTechnical = v.includes('Technical')
+              const isNonResponsive = v.includes('Non-Responsive')
+              const bg = isOutstanding ? 'rgba(16,185,129,0.1)'
+                : isProfessional ? 'rgba(14,165,233,0.1)'
+                  : isDeveloping ? 'rgba(245,158,11,0.1)'
+                    : 'rgba(244,63,94,0.1)'
+              const clr = isOutstanding ? '#10b981'
+                : isProfessional ? '#0ea5e9'
+                  : isDeveloping ? '#f59e0b'
+                    : '#f43f5e'
+              return (
+                <span style={{
+                  fontSize: '0.65rem',
+                  padding: '3px 10px',
+                  borderRadius: 99,
+                  background: bg,
+                  color: clr,
+                  fontWeight: 700,
+                  fontFamily: "'DM Sans', sans-serif",
+                  border: `1px solid ${clr}33`,
+                  whiteSpace: 'nowrap',
+                }}>
+                  {v}
+                </span>
+              )
+            })()}
           </div>
+
+          {/* Feedback text — structured as evaluator notes */}
+          {feedback ? (
+            <div style={{
+              borderLeft: '3px solid #0ea5e9',
+              paddingLeft: '1rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.6rem',
+            }}>
+              {feedback.split('. ').filter(s => s.trim().length > 0).map((sentence, i) => (
+                <p key={i} style={{
+                  fontSize: '0.875rem',
+                  lineHeight: 1.7,
+                  color: '#1e293b',
+                  margin: 0,
+                  fontFamily: "'DM Sans', sans-serif",
+                }}>
+                  {sentence.trim().endsWith('.') ? sentence.trim() : sentence.trim() + '.'}
+                </p>
+              ))}
+            </div>
+          ) : (
+            <p style={{
+              fontSize: '0.85rem',
+              color: '#94a3b8',
+              fontStyle: 'italic',
+              margin: 0,
+              fontFamily: "'DM Sans', sans-serif",
+            }}>No feedback available for this session.</p>
+          )}
+
+          {/* Metrics grid — only renders cells with real data */}
+          {(() => {
+            const wc = metrics.word_count
+            const fillerPct = metrics.filler_word_frequency
+            const fillerHits = metrics.filler_count
+            const pace = metrics.speaking_rate
+            const clarity = metrics.clarity_rating
+            const validity = metrics.content_validity
+
+            // Only include a metric if its value is a real, non-placeholder datum
+            const cells = []
+
+            if (wc !== undefined && wc !== null) {
+              const wclr = wc >= 80 ? '#10b981' : wc >= 40 ? '#0ea5e9' : wc >= 15 ? '#f59e0b' : '#f43f5e'
+              cells.push(
+                <div key="wc" style={{ textAlign: 'center' }}>
+                  <p style={{ fontSize: '0.5rem', color: '#64748b', marginBottom: '0.3rem', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em', textTransform: 'uppercase' }}>Words</p>
+                  <p style={{ fontSize: '1.1rem', fontWeight: 800, color: wclr, margin: 0 }}>{wc}</p>
+                  <p style={{ fontSize: '0.5rem', color: '#94a3b8', marginTop: '0.2rem' }}>
+                    {wc < 25 ? 'Too brief' : wc < 50 ? 'Concise' : wc < 100 ? 'Good depth' : 'Detailed'}
+                  </p>
+                </div>
+              )
+            }
+
+            if (fillerHits !== undefined && fillerHits !== null && fillerPct !== undefined) {
+              const fclr = fillerHits === 0 ? '#10b981' : fillerHits <= 3 ? '#f59e0b' : '#f43f5e'
+              cells.push(
+                <div key="filler" style={{ textAlign: 'center' }}>
+                  <p style={{ fontSize: '0.5rem', color: '#64748b', marginBottom: '0.3rem', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em', textTransform: 'uppercase' }}>Filler %</p>
+                  <p style={{ fontSize: '1.1rem', fontWeight: 800, color: fclr, margin: 0 }}>{fillerPct}</p>
+                  <p style={{ fontSize: '0.5rem', color: '#94a3b8', marginTop: '0.2rem' }}>({fillerHits} hits)</p>
+                </div>
+              )
+            }
+
+            if (pace && pace !== 'Unknown') {
+              const pclr = pace === 'Optimal' ? '#10b981' : pace === 'Moderate' ? '#0ea5e9' : '#f59e0b'
+              cells.push(
+                <div key="pace" style={{ textAlign: 'center' }}>
+                  <p style={{ fontSize: '0.5rem', color: '#64748b', marginBottom: '0.3rem', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em', textTransform: 'uppercase' }}>Pace</p>
+                  <p style={{ fontSize: '0.85rem', fontWeight: 800, color: pclr, margin: 0 }}>{pace}</p>
+                </div>
+              )
+            }
+
+            if (clarity && clarity !== 'Unknown') {
+              const cclr = clarity === 'High' ? '#10b981' : clarity === 'Moderate' ? '#0ea5e9' : '#f43f5e'
+              cells.push(
+                <div key="clarity" style={{ textAlign: 'center' }}>
+                  <p style={{ fontSize: '0.5rem', color: '#64748b', marginBottom: '0.3rem', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em', textTransform: 'uppercase' }}>Clarity</p>
+                  <p style={{ fontSize: '0.85rem', fontWeight: 800, color: cclr, margin: 0 }}>{clarity}</p>
+                </div>
+              )
+            }
+
+            if (validity && validity !== 'N/A') {
+              const vclr = validity === 'Confirmed' ? '#10b981' : validity === 'Weak/Unrelated' ? '#f43f5e' : '#f59e0b'
+              cells.push(
+                <div key="validity" style={{ textAlign: 'center' }}>
+                  <p style={{ fontSize: '0.5rem', color: '#64748b', marginBottom: '0.3rem', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em', textTransform: 'uppercase' }}>Validity</p>
+                  <p style={{ fontSize: '0.8rem', fontWeight: 800, color: vclr, margin: 0 }}>{validity}</p>
+                </div>
+              )
+            }
+
+            if (cells.length === 0) return null
+
+            return (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: `repeat(${cells.length}, 1fr)`,
+                gap: '0.75rem',
+                paddingTop: '1rem',
+                borderTop: '1px solid rgba(148,163,184,0.15)',
+              }}>
+                {cells}
+              </div>
+            )
+          })()}
         </motion.div>
 
         {/* Suggestions */}
