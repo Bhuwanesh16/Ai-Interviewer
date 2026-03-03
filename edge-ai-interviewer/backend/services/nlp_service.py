@@ -5,7 +5,8 @@ Uses SentenceTransformers to compute semantic similarity between the question
 and the applicant's transcribed answer.
 """
 
-from typing import Dict
+import re
+from typing import Dict, List
 import logging
 
 try:
@@ -28,64 +29,77 @@ class NLPService:
                 logging.error(f"Failed to load sentence_transformers: {e}")
                 self.model = None
 
+    def _extract_keywords(self, text: str) -> List[str]:
+        # Simple extraction of significant words (length > 4, no stopwords)
+        words = re.findall(r'\b\w{5,}\b', text.lower())
+        stopwords = {"about", "there", "their", "where", "which", "though", "through"}
+        return [w for w in words if w not in stopwords]
+
     def score_relevance(self, question: str, answer: str) -> Dict[str, any]:
-        if not answer or len(answer.strip()) < 5:
-            return {"nlp_score": 0.0, "metrics": {"filler_words": 0, "length": 0}}
+        is_fallback = any(x in answer for x in ["Transcription unavailable", "(Speech parsing error", "(Audio file missing)"])
+        
+        if not answer or len(answer.strip()) < 10 or is_fallback:
+            return {
+                "nlp_score": 0.0, 
+                "is_valid": False, 
+                "metrics": {"reason": "Insufficient content", "word_count": 0}
+            }
             
-        # 1. Semantic Similarity (70% weight)
+        # 1. Semantic Similarity (60% weight)
         if not self.model:
-            # Fallback heuristic
             base = min(len(answer) / max(len(question), 1), 2.0)
             semantic_score = max(0.0, min(1.0, 0.5 + (base - 0.5) * 0.25))
         else:
             try:
-                # Encode question and answer
                 q_emb = self.model.encode(question, convert_to_tensor=True)
                 a_emb = self.model.encode(answer, convert_to_tensor=True)
-                
-                # Compute cosine similarity
                 sim = util.cos_sim(q_emb, a_emb).item()
-                
-                # Map similarity to base score: 
-                # e.g., sim=0 -> score=0, sim=0.5 -> score=0.75
-                semantic_score = max(0.0, min(1.0, (sim + 0.1) * 1.5))
+                # Industrial validation: sim < 0.15 usually means completely unrelated
+                semantic_score = max(0.0, min(1.0, (sim - 0.1) * 1.6)) if sim > 0.1 else 0.0
             except Exception as e:
                 logging.error(f"Error computing NLP score: {e}")
                 semantic_score = 0.5
 
-        # 2. Filler words (penalty)
-        filler_words = {"um", "uh", "actually", "basically", "literally", "like", "you know"}
-        words = answer.lower().split()
-        filler_count = sum(1 for w in words if w in filler_words)
-        # Penalize slightly for frequent filler words
-        filler_penalty = min(0.15, (filler_count / max(len(words), 10)) * 0.5)
+        # 2. Keyword Matching (20% weight)
+        q_keywords = self._extract_keywords(question)
+        a_words = answer.lower()
+        keyword_hits = sum(1 for kw in q_keywords if kw in a_words)
+        keyword_score = min(keyword_hits / max(len(q_keywords), 1), 1.0) if q_keywords else 1.0
+
+        # 3. Filler & Professionalism Penalty
+        filler_words = {"um", "uh", "actually", "basically", "literally", "like", "you know", "i mean"}
+        informal = {"totally", "super", "kinda", "sorta", "stuff", "things", "etc"}
         
-        # 3. Answer Length/Substantiality (30% weight)
-        # Aim for 30-100 words (professional depth)
+        words = answer.lower().split()
         word_count = len(words)
-        if word_count < 15:
-            len_score = word_count / 15.0 * 0.6  # Penalize brevity
-        elif word_count > 120:
-            len_score = 0.8  # Slight penalty for rambling
-        else:
-            len_score = min(1.0, (word_count / 40.0) + 0.3)
-            
-        # 4. Professionalism (Avoid common slang or informal tropes)
-        informal = {"totally", "super", "kinda", "sorta", "stuff", "things"}
+        filler_count = sum(1 for w in words if w in filler_words)
         informal_count = sum(1 for w in words if w in informal)
-        informal_penalty = min(0.1, (informal_count / max(len(words), 10)) * 0.3)
+        
+        filler_penalty = min(0.15, (filler_count / max(word_count, 10)) * 0.6)
+        informal_penalty = min(0.1, (informal_count / max(word_count, 10)) * 0.4)
+
+        # 4. Content Substantiality (20% weight)
+        if word_count < 25:
+            len_score = word_count / 25.0 * 0.7
+        else:
+            len_score = min(1.0, (word_count / 80.0) + 0.3)
 
         # Final Blend
-        final_score = (semantic_score * 0.7) + (len_score * 0.3)
-        final_score = max(0.1, min(final_score - filler_penalty - informal_penalty, 1.0))
+        final_score = (semantic_score * 0.6) + (keyword_score * 0.2) + (len_score * 0.2)
+        final_score = max(0.05, min(final_score - filler_penalty - informal_penalty, 1.0))
         
+        # Validation Check
+        is_valid = semantic_score > 0.1 and word_count > 12
+
         return {
             "nlp_score": round(float(final_score), 2),
+            "is_valid": is_valid,
             "metrics": {
                 "filler_word_count": filler_count,
-                "informal_word_count": informal_count,
+                "keyword_match_ratio": round(keyword_score, 2),
                 "word_count": word_count,
-                "readability_estimate": "Professional" if word_count > 30 else "Limited Detail"
+                "professionalism_level": "High" if informal_penalty < 0.02 else "Standard" if informal_penalty < 0.05 else "Casual",
+                "content_validity": "Confirmed" if is_valid else "Weak/Unrelated"
             }
         }
 

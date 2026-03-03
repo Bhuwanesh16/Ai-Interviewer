@@ -89,75 +89,102 @@ const InterviewCard = ({ question, onStart, onStop, isRecording, timer, onNextQu
 
       {/* Question text */}
       <div style={{
-        borderRadius: '1rem',
-        border: '1px solid rgba(148,163,184,0.2)',
-        background: 'rgba(248,250,252,0.9)',
-        padding: '1.125rem',
+        borderRadius: '1.25rem',
+        border: '1px solid rgba(148,163,184,0.15)',
+        background: 'rgba(248,250,252,0.8)',
+        padding: '1.5rem',
         marginBottom: '1.5rem',
         position: 'relative',
+        minHeight: '120px',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '1rem',
-        minHeight: '80px',
+        flexDirection: 'column',
+        justifyContent: 'center'
       }}>
-        <div style={{ position: 'relative', flex: 1, paddingLeft: '0.5rem' }}>
-          {/* Quote mark */}
-          <span style={{
-            position: 'absolute',
-            top: '-0.25rem', left: '-0.25rem',
-            fontFamily: "'Syne', sans-serif",
-            fontSize: '2rem',
-            color: 'rgba(14,165,233,0.15)',
-            lineHeight: 1,
-            fontWeight: 800,
-            userSelect: 'none',
-          }}>"</span>
-          <p style={{
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: '0.9375rem',
-            lineHeight: 1.75,
-            color: '#475569',
-            paddingTop: '0.5rem',
-          }}>{question}</p>
-        </div>
+        {/* Quote mark decoration */}
+        <span style={{
+          position: 'absolute',
+          top: '0.5rem', left: '0.75rem',
+          fontFamily: "'Syne', sans-serif",
+          fontSize: '3rem',
+          color: 'rgba(14,165,233,0.1)',
+          lineHeight: 1,
+          fontWeight: 800,
+          userSelect: 'none',
+        }}>"</span>
 
-        {/* Navigation Arrows */}
+        <AnimatePresence mode="wait">
+          <motion.p
+            key={currentIdx}
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            style={{
+              fontFamily: "'DM Sans', sans-serif",
+              fontSize: '1.05rem',
+              fontWeight: 500,
+              lineHeight: 1.6,
+              color: '#334155',
+              textAlign: 'center',
+              position: 'relative',
+              zIndex: 1
+            }}
+          >
+            {question}
+          </motion.p>
+        </AnimatePresence>
+
+        {/* Floating Arrows */}
         {totalQuestions > 1 && (
-          <div style={{ display: 'flex', gap: '0.25rem', flexShrink: 0 }}>
-            <button
+          <>
+            <motion.button
+              whileHover={{ scale: 1.1, x: -2 }}
+              whileTap={{ scale: 0.9 }}
               onClick={onPrevQuestion}
               disabled={!onPrevQuestion}
               style={{
-                cursor: onPrevQuestion ? 'pointer' : 'default',
-                opacity: onPrevQuestion ? 1 : 0.3,
-                border: 'none',
-                background: 'rgba(14,165,233,0.1)',
+                position: 'absolute',
+                left: '-1rem',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: '40px', height: '40px',
                 borderRadius: '50%',
-                color: '#0ea5e9',
-                width: '32px', height: '32px',
+                background: '#fff',
+                border: '1px solid rgba(148,163,184,0.2)',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                color: onPrevQuestion ? '#0ea5e9' : '#cbd5e1',
+                cursor: onPrevQuestion ? 'pointer' : 'not-allowed',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '1rem'
-              }}>
+                fontSize: '1.25rem',
+                zIndex: 10
+              }}
+            >
               ←
-            </button>
-            <button
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.1, x: 2 }}
+              whileTap={{ scale: 0.9 }}
               onClick={onNextQuestion}
               disabled={!onNextQuestion}
               style={{
-                cursor: onNextQuestion ? 'pointer' : 'default',
-                opacity: onNextQuestion ? 1 : 0.3,
-                border: 'none',
-                background: 'rgba(14,165,233,0.1)',
+                position: 'absolute',
+                right: '-1rem',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: '40px', height: '40px',
                 borderRadius: '50%',
-                color: '#0ea5e9',
-                width: '32px', height: '32px',
+                background: '#fff',
+                border: '1px solid rgba(148,163,184,0.2)',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                color: onNextQuestion ? '#0ea5e9' : '#cbd5e1',
+                cursor: onNextQuestion ? 'pointer' : 'not-allowed',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '1rem'
-              }}>
+                fontSize: '1.25rem',
+                zIndex: 10
+              }}
+            >
               →
-            </button>
-          </div>
+            </motion.button>
+          </>
         )}
       </div>
 

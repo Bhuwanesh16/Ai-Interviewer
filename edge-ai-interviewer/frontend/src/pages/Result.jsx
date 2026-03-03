@@ -254,7 +254,9 @@ const Result = () => {
             {metrics.verdict && (
               <span style={{
                 fontSize: '0.6rem', padding: '2px 8px', borderRadius: 99,
-                background: 'rgba(14,165,233,0.1)', color: '#0ea5e9', fontWeight: 700
+                background: metrics.verdict.includes('Technical') ? 'rgba(244,63,94,0.1)' : 'rgba(14,165,233,0.1)',
+                color: metrics.verdict.includes('Technical') ? '#f43f5e' : '#0ea5e9',
+                fontWeight: 700
               }}>
                 {metrics.verdict}
               </span>
@@ -269,26 +271,34 @@ const Result = () => {
           }}>{feedback || 'Analyzing your performance results...'}</p>
 
           <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
+            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
             gap: '0.75rem', marginTop: '1.25rem', paddingTop: '1.25rem',
             borderTop: '1px solid rgba(148,163,184,0.15)'
           }}>
             <div style={{ textAlign: 'center' }}>
-              <p style={{ fontSize: '0.6rem', color: '#64748b', marginBottom: '0.25rem' }}>WORD COUNT</p>
-              <p style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>{metrics.word_count || 0}</p>
+              <p style={{ fontSize: '0.55rem', color: '#64748b', marginBottom: '0.25rem' }}>WORDS</p>
+              <p style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a' }}>{metrics.word_count || 0}</p>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <p style={{ fontSize: '0.6rem', color: '#64748b', marginBottom: '0.25rem' }}>FILLER RATIO</p>
-              <p style={{ fontSize: '1.125rem', fontWeight: 800, color: '#f59e0b' }}>{metrics.filler_word_frequency || '0.00'}</p>
-              <p style={{ fontSize: '0.55rem', color: '#94a3b8' }}>({metrics.filler_count || 0} hits)</p>
+              <p style={{ fontSize: '0.55rem', color: '#64748b', marginBottom: '0.25rem' }}>FILLER %</p>
+              <p style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f59e0b' }}>{metrics.filler_word_frequency || '0.00'}</p>
+              <p style={{ fontSize: '0.5rem', color: '#94a3b8' }}>({metrics.filler_count || 0} hits)</p>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <p style={{ fontSize: '0.6rem', color: '#64748b', marginBottom: '0.25rem' }}>PACE</p>
-              <p style={{ fontSize: '1rem', fontWeight: 700, color: '#0ea5e9' }}>{metrics.speaking_rate || 'Optimal'}</p>
+              <p style={{ fontSize: '0.55rem', color: '#64748b', marginBottom: '0.25rem' }}>PACE</p>
+              <p style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0ea5e9' }}>{metrics.speaking_rate || 'Optimal'}</p>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <p style={{ fontSize: '0.6rem', color: '#64748b', marginBottom: '0.25rem' }}>SENTIMENT</p>
-              <p style={{ fontSize: '0.8rem', fontWeight: 600, color: '#10b981' }}>{metrics.sentiment_profile || 'Professional'}</p>
+              <p style={{ fontSize: '0.55rem', color: '#64748b', marginBottom: '0.25rem' }}>CLARITY</p>
+              <p style={{ fontSize: '0.8rem', fontWeight: 700, color: metrics.clarity_rating === 'Low Quality' ? '#f43f5e' : '#10b981' }}>
+                {metrics.clarity_rating || 'High'}
+              </p>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: '0.55rem', color: '#64748b', marginBottom: '0.25rem' }}>VALIDITY</p>
+              <p style={{ fontSize: '0.8rem', fontWeight: 700, color: metrics.content_validity === 'Confirmed' ? '#10b981' : '#f59e0b' }}>
+                {metrics.content_validity || 'Checked'}
+              </p>
             </div>
           </div>
         </motion.div>

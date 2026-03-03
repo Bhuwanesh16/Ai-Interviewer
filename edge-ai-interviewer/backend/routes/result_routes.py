@@ -12,12 +12,18 @@ def get_result(session_id):
     if not session:
         return jsonify({"message": "Session not found"}), 404
 
+    from services.nlp_service import nlp_service
+    
     responses_data = []
     for r in session.responses:
+        # Re-run NLP relevance for industrial validation details
+        nlp_result = nlp_service.score_relevance(r.question or "", r.transcript or "")
+        
         # Generate feedback on the fly
         report = report_service.generate_feedback(
             {"facial": r.facial_score, "speech": r.speech_score, "nlp": r.nlp_score, "final": r.final_score},
-            r.transcript or ""
+            r.transcript or "",
+            nlp_details=nlp_result
         )
         responses_data.append(
             {

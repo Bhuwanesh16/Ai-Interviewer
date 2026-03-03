@@ -156,7 +156,8 @@ def submit_interview():
     report = report_service.generate_feedback(
         {"facial": response.facial_score, "speech": response.speech_score, "nlp": response.nlp_score, "final": response.final_score},
         response.transcript,
-        speech_details=speech_result
+        speech_details=speech_result,
+        nlp_details=nlp_result
     )
 
     return (

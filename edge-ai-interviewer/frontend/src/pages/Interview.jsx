@@ -84,15 +84,24 @@ const Interview = () => {
           formData.append('edge_facial_score', avgEmotionScore.toString())
           formData.append('edge_speech_score', avgSpeechScore.toString())
           const { data } = await submitInterview(formData)
-          navigate(`/result/${data.session_id}`, {
-            state: {
-              scores: data.scores,
-              transcript: data.transcript,
-              feedback: data.feedback,
-              suggestions: data.suggestions,
-              metrics: data.metrics
-            },
-          })
+
+          if (currentQuestionIndex < questions.length - 1) {
+            // Automatic move to next question
+            setCurrentQuestionIndex(prev => prev + 1)
+            setLoading(false)
+            setPhase('idle')
+          } else {
+            // Final question - go to results
+            navigate(`/result/${data.session_id}`, {
+              state: {
+                scores: data.scores,
+                transcript: data.transcript,
+                feedback: data.feedback,
+                suggestions: data.suggestions,
+                metrics: data.metrics
+              },
+            })
+          }
         } catch (err) {
           console.error(err)
           setLoading(false)
@@ -133,41 +142,124 @@ const Interview = () => {
     }
   }
 
+  const ROLES = [
+    'Software Engineer',
+    'Frontend Developer',
+    'Backend Developer',
+    'Full Stack Developer',
+    'Data Scientist',
+    'Machine Learning Engineer',
+    'DevOps Engineer',
+    'Product Manager',
+    'UI/UX Designer',
+    'QA Engineer',
+    'Cyber Security Analyst'
+  ]
+
   if (!isSetupComplete) {
     return (
-      <div style={{ maxWidth: 600, margin: '4rem auto', padding: '2.5rem', borderRadius: '1.5rem', background: '#fff', border: '1px solid rgba(148,163,184,0.2)', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-        <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '1.75rem', marginBottom: '0.5rem', color: '#0f172a' }}>
-          Interview Setup
-        </h2>
-        <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '2rem' }}>Define your role and skills to generate tailored interview questions.</p>
-        <form onSubmit={handleSetupSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      <div style={{
+        maxWidth: 650,
+        margin: '4rem auto',
+        padding: '3rem',
+        borderRadius: '1.75rem',
+        background: 'rgba(255, 255, 255, 0.98)',
+        border: '1px solid rgba(148,163,184,0.25)',
+        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+      }}>
+        <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+          <h2 style={{
+            fontFamily: "'Syne', sans-serif",
+            fontSize: '2.25rem',
+            fontWeight: 800,
+            letterSpacing: '-0.03em',
+            color: '#0ea5e9',
+            marginBottom: '0.75rem'
+          }}>
+            Interview Configuration
+          </h2>
+          <p style={{ color: '#64748b', fontSize: '0.95rem', fontWeight: 450 }}>
+            Configure your session parameters to begin industrial-grade AI assessment.
+          </p>
+        </div>
+
+        <form onSubmit={handleSetupSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Target Role</label>
-            <input
+            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#0ea5e9', marginBottom: '0.625rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Target Professional Role</label>
+            <select
               value={role}
               onChange={e => setRole(e.target.value)}
-              placeholder="e.g. Frontend Developer"
               required
-              style={{ width: '100%', padding: '0.875rem', borderRadius: '0.75rem', border: '1px solid #cbd5e1', outline: 'none', fontSize: '1rem', color: '#1e293b' }}
-            />
+              style={{
+                width: '100%',
+                padding: '0.875rem 1.125rem',
+                borderRadius: '0.875rem',
+                border: '1px solid #cbd5e1',
+                outline: 'none',
+                fontSize: '1rem',
+                color: '#1e293b',
+                background: '#fff',
+                cursor: 'pointer',
+                transition: 'border-color 0.2s ease, box-shadow 0.2s ease'
+              }}
+              onFocus={e => {
+                e.target.style.borderColor = '#0ea5e9'
+                e.target.style.boxShadow = '0 0 0 4px rgba(14, 165, 233, 0.15)'
+              }}
+              onBlur={e => {
+                e.target.style.borderColor = '#cbd5e1'
+                e.target.style.boxShadow = 'none'
+              }}
+            >
+              <option value="" disabled>Select a role...</option>
+              {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
           </div>
+
           <div>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Key Skills</label>
+            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#0ea5e9', marginBottom: '0.625rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Core Competencies</label>
             <input
               value={skills}
               onChange={e => setSkills(e.target.value)}
-              placeholder="e.g. React, Node.js, Python (comma separated)"
+              placeholder="e.g. React, Distributed Systems, Python"
               required
-              style={{ width: '100%', padding: '0.875rem', borderRadius: '0.75rem', border: '1px solid #cbd5e1', outline: 'none', fontSize: '1rem', color: '#1e293b' }}
+              style={{
+                width: '100%',
+                padding: '0.875rem 1.125rem',
+                borderRadius: '0.875rem',
+                border: '1px solid #cbd5e1',
+                outline: 'none',
+                fontSize: '1rem',
+                color: '#1e293b'
+              }}
+              onFocus={e => {
+                e.target.style.borderColor = '#0ea5e9'
+                e.target.style.boxShadow = '0 0 0 4px rgba(14, 165, 233, 0.15)'
+              }}
+              onBlur={e => {
+                e.target.style.borderColor = '#cbd5e1'
+                e.target.style.boxShadow = 'none'
+              }}
             />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Experience Level</label>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#0ea5e9', marginBottom: '0.625rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Experience Tier</label>
               <select
                 value={level}
                 onChange={e => setLevel(e.target.value)}
-                style={{ width: '100%', padding: '0.875rem', borderRadius: '0.75rem', border: '1px solid #cbd5e1', outline: 'none', fontSize: '1rem', color: '#1e293b', background: '#fff' }}
+                style={{
+                  width: '100%',
+                  padding: '0.875rem 1.125rem',
+                  borderRadius: '0.875rem',
+                  border: '1px solid #cbd5e1',
+                  outline: 'none',
+                  fontSize: '1rem',
+                  color: '#1e293b',
+                  background: '#fff',
+                  cursor: 'pointer'
+                }}
               >
                 <option>Entry Level</option>
                 <option>Intermediate</option>
@@ -176,35 +268,60 @@ const Interview = () => {
               </select>
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>No. of Questions</label>
-              <input
-                type="number"
-                min="1"
-                max="10"
-                value={numQuestions}
-                onChange={e => setNumQuestions(parseInt(e.target.value))}
-                style={{ width: '100%', padding: '0.875rem', borderRadius: '0.75rem', border: '1px solid #cbd5e1', outline: 'none', fontSize: '1rem', color: '#1e293b' }}
-              />
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#0ea5e9', marginBottom: '0.625rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Question Volume</label>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input
+                  type="number"
+                  min="1"
+                  value={numQuestions}
+                  onChange={e => setNumQuestions(parseInt(e.target.value))}
+                  style={{
+                    width: '100%',
+                    padding: '0.875rem 1.125rem',
+                    borderRadius: '0.875rem',
+                    border: '1px solid #cbd5e1',
+                    outline: 'none',
+                    fontSize: '1rem',
+                    color: '#1e293b'
+                  }}
+                />
+                <span style={{ position: 'absolute', right: '1rem', fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>Standard Set</span>
+              </div>
             </div>
           </div>
-          <button
+
+          <motion.button
+            whileHover={{ scale: 1.01, translateY: -2 }}
+            whileTap={{ scale: 0.98 }}
             type="submit"
             disabled={loading}
             style={{
-              padding: '1rem',
-              borderRadius: '0.75rem',
+              padding: '1.125rem',
+              borderRadius: '0.875rem',
               border: 'none',
               background: 'linear-gradient(135deg, #0ea5e9, #0284c7)',
               color: '#fff',
               fontWeight: 700,
-              fontSize: '1rem',
+              fontSize: '1.125rem',
               cursor: 'pointer',
               marginTop: '1rem',
-              boxShadow: '0 4px 14px rgba(14,165,233,0.3)'
+              boxShadow: '0 10px 15px -3px rgba(14, 165, 233, 0.3), 0 4px 6px -2px rgba(14, 165, 233, 0.05)',
+              transition: 'all 0.2s ease',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.75rem'
             }}
           >
-            {loading ? 'Preparing your session...' : 'Start Interview'}
-          </button>
+            {loading ? (
+              <>
+                <div className="loading-spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />
+                <span>Preparing Session...</span>
+              </>
+            ) : (
+              <span>Proceed to Interview</span>
+            )}
+          </motion.button>
         </form>
       </div>
     )
