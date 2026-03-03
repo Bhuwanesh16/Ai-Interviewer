@@ -36,20 +36,25 @@ Interview Configuration:
 - Core Competencies: {skills}
 - Question Volume: {question_volume}
 
+CRITICAL: Generate questions SPECIFICALLY for the Target Role "{role}". 
+Roles include: Software Engineer, Frontend Developer, Backend Developer, Full Stack Developer, 
+Data Scientist, Machine Learning Engineer, DevOps Engineer, Product Manager, UI/UX Designer, 
+QA Engineer, Cyber Security Analyst. Tailor each question to the domain and responsibilities of this role.
+
 Generation Rules:
 - Adjust difficulty based on experience tier.
-- Entry Level → implementation-focused, learning-oriented.
-- Intermediate → design + optimization + trade-offs.
-- Senior → architecture + scalability + failure handling.
+- Entry Level → implementation-focused, learning-oriented, hands-on.
+- Intermediate → design + optimization + trade-offs, real-world scenarios.
+- Senior → architecture + scalability + failure handling, system thinking.
 - Lead/Manager → leadership, team dynamics, cross-functional strategy.
-- Cover different competencies across questions.
-- Avoid repeating topics.
-- Questions must test conceptual depth.
+- Use Core Competencies ({skills}) to add domain-specific angles where relevant.
+- Cover different competencies across questions. Avoid repeating topics.
+- Questions must test conceptual depth and real problems in production/industry.
 - Keep each question under 35 words.
 - Label each question exactly as Q1, Q2, Q3, etc. followed by a colon.
 - Do not include answers or explanations.
-- Reject vague questions like "What is React?" or "Explain Python."
-- Questions should reflect real problems encountered in production systems.
+- Reject vague definition questions like "What is React?" or "Explain Python."
+- Questions should reflect real problems encountered in the role's day-to-day work.
 
 Output Format (STRICT — follow exactly):
 Q1: <question>
@@ -109,7 +114,80 @@ Improvements:
 
 # ---------------------------------------------------------------------------
 # Role/level-aware fallback question banks (used when Ollama is unreachable)
+# Roles match the Interview Configuration dropdown: Software Engineer, Frontend, Backend, etc.
 # ---------------------------------------------------------------------------
+
+def _level_bank(entry: list, intermediate: list, senior: list, lead: list) -> dict:
+    return {"entry level": entry, "intermediate": intermediate, "senior": senior, "lead / manager": lead}
+
+ROLE_FALLBACK_BANKS = {
+    "Software Engineer": _level_bank(
+        ["Walk me through a personal project you've built from scratch.", "How do you approach debugging unfamiliar code?", "Describe a time you learned a new technology quickly.", "What technical concept did you recently master? Explain it to a peer."],
+        ["Describe a critical production bug you diagnosed and resolved. What was your RCA process?", "How do you balance technical debt reduction with feature delivery?", "Explain your approach to API design. What principles drive your decisions?", "How have you handled a major scope change mid-sprint?"],
+        ["How do you architect systems to be resilient to third-party service failures?", "What trade-offs do you evaluate when choosing between microservices and a monolith?", "Describe your approach to designing a distributed system that must guarantee consistency."],
+        ["How do you manage a team member consistently missing sprint commitments?", "Describe how you set technical strategy aligned with business objectives.", "Walk me through how you'd run a post-mortem after a major production incident."],
+    ),
+    "Frontend Developer": _level_bank(
+        ["Describe a React or Vue component you built and how you managed its state.", "How do you ensure your UI is accessible and responsive?", "Walk me through a time you fixed a tricky CSS or layout issue."],
+        ["How do you optimize frontend performance for slow networks or large bundles?", "Describe your approach to component architecture and reusability.", "How do you handle state management in a complex SPA? What patterns do you use?"],
+        ["How would you design a frontend architecture for a multi-team monorepo?", "What trade-offs do you consider when choosing between SSR and CSR?", "How do you ensure consistent UX across browsers and devices at scale?"],
+        ["How do you mentor junior frontend developers on best practices?", "How do you align frontend roadmap with product and design priorities?"],
+    ),
+    "Backend Developer": _level_bank(
+        ["Walk me through an API you designed. What considerations did you have?", "Describe a time you optimized a slow database query.", "How do you handle errors and logging in backend services?"],
+        ["How do you design APIs for high concurrency and low latency?", "Describe your approach to database schema design and migrations.", "How do you ensure backward compatibility when evolving APIs?"],
+        ["How do you design systems to be resilient to third-party failures?", "What trade-offs do you evaluate when choosing between SQL and NoSQL?", "Describe your approach to event-driven or message-based architectures."],
+        ["How do you set technical standards for backend services across teams?", "Walk me through how you'd run a post-mortem for a production outage."],
+    ),
+    "Full Stack Developer": _level_bank(
+        ["Describe a full-stack feature you shipped end-to-end. What was your process?", "How do you split work between frontend and backend when building a feature?"],
+        ["How do you maintain consistency between frontend and backend contracts?", "Describe a time you had to optimize both client and server performance.", "How do you choose which logic lives on the client vs the server?"],
+        ["How would you design a full-stack architecture for a real-time collaborative app?", "What trade-offs do you consider when building isomorphic or SSR applications?"],
+        ["How do you mentor full-stack developers across the entire stack?", "How do you balance feature velocity with technical quality across the stack?"],
+    ),
+    "Data Scientist": _level_bank(
+        ["Describe a data analysis project you completed. What was your approach?", "How do you validate that your model or analysis is correct?", "Walk me through a time you cleaned or preprocessed messy data."],
+        ["How do you choose between different modeling approaches for a given problem?", "Describe a time you communicated complex results to non-technical stakeholders.", "How do you handle imbalanced or missing data in your pipeline?"],
+        ["How would you design an ML pipeline for production at scale?", "What trade-offs do you evaluate when selecting features or models?", "How do you ensure model fairness and interpretability?"],
+        ["How do you align data science roadmap with business KPIs?", "How do you mentor data scientists on best practices and reproducibility?"],
+    ),
+    "Machine Learning Engineer": _level_bank(
+        ["Describe an ML model you trained and deployed. What was your workflow?", "How do you debug a model that underperforms in production?", "Walk me through how you version datasets and models."],
+        ["How do you optimize model inference latency for real-time use cases?", "Describe your approach to A/B testing model changes in production.", "How do you handle data drift and model retraining?"],
+        ["How would you design an ML platform for multiple teams and models?", "What trade-offs do you consider when choosing between batch and real-time inference?", "How do you ensure reproducibility and auditability of ML pipelines?"],
+        ["How do you set ML engineering standards across the organization?", "How do you balance experimentation speed with production stability?"],
+    ),
+    "DevOps Engineer": _level_bank(
+        ["Describe a CI/CD pipeline you built or improved. What was your role?", "How do you troubleshoot a service that's slow or failing in production?", "Walk me through your approach to configuration management."],
+        ["How do you design infrastructure for high availability and disaster recovery?", "Describe your approach to monitoring and alerting. What do you measure?", "How do you manage secrets and security in deployment pipelines?"],
+        ["How would you design a multi-region deployment strategy?", "What trade-offs do you consider when choosing between Kubernetes and simpler orchestration?", "How do you balance infrastructure cost with performance and reliability?"],
+        ["How do you lead incident response and post-mortem culture?", "How do you align DevOps practices with development and product teams?"],
+    ),
+    "Product Manager": _level_bank(
+        ["Describe a product decision you made based on user feedback. What was the outcome?", "How do you prioritize features when resources are limited?", "Walk me through how you define success metrics for a feature."],
+        ["How do you balance stakeholder requests with product strategy?", "Describe a time you had to deprioritize a feature. How did you communicate it?", "How do you work with engineering to scope and ship on time?"],
+        ["How do you drive product strategy in a competitive market?", "What trade-offs do you make when balancing innovation with technical debt?", "How do you align roadmaps across multiple teams or product lines?"],
+        ["How do you mentor product managers and build product culture?", "How do you handle conflict between product vision and engineering constraints?"],
+    ),
+    "UI/UX Designer": _level_bank(
+        ["Walk me through a design project from research to final deliverable.", "How do you incorporate user feedback into your designs?", "Describe a time you simplified a complex user flow."],
+        ["How do you balance user needs with business goals and technical constraints?", "Describe your approach to design systems and component libraries.", "How do you measure the success of a design change?"],
+        ["How would you lead design for a new product from scratch?", "What trade-offs do you consider when choosing between consistency and innovation?", "How do you ensure accessibility and inclusion in your designs?"],
+        ["How do you mentor designers and foster design maturity in the org?", "How do you align design vision with engineering and product?"],
+    ),
+    "QA Engineer": _level_bank(
+        ["Describe your testing strategy for a recent feature. What did you cover?", "How do you decide when to automate vs manually test?", "Walk me through a bug you found that was hard to reproduce."],
+        ["How do you design test cases for complex or legacy systems?", "Describe your approach to regression testing and release criteria.", "How do you work with developers to improve testability?"],
+        ["How would you design a QA strategy for a new product or platform?", "What trade-offs do you consider when choosing test automation frameworks?", "How do you balance coverage with test maintenance cost?"],
+        ["How do you lead quality initiatives across engineering teams?", "How do you align QA metrics with product and business goals?"],
+    ),
+    "Cyber Security Analyst": _level_bank(
+        ["Describe a security assessment or audit you performed. What did you find?", "How do you stay updated on emerging threats and vulnerabilities?", "Walk me through how you'd respond to a suspected breach."],
+        ["How do you prioritize remediation when multiple vulnerabilities are found?", "Describe your approach to penetration testing or red team exercises.", "How do you communicate security risks to non-technical stakeholders?"],
+        ["How would you design a security program for a growing company?", "What trade-offs do you consider when balancing security with usability?", "How do you ensure compliance and audit readiness?"],
+        ["How do you build security culture across engineering and operations?", "How do you align security initiatives with business priorities?"],
+    ),
+}
 
 FALLBACK_BANKS = {
     "entry level": [
@@ -117,36 +195,19 @@ FALLBACK_BANKS = {
         "What motivates you to pursue a career in this field?",
         "Describe a time you learned a new technology quickly under constraint.",
         "How do you approach debugging unfamiliar code? Walk me through your process.",
-        "What technical concept did you recently master? Explain it as if teaching a peer.",
-        "How do you prioritize when you have multiple deadlines at once?",
-        "Describe a mistake you made in a project and what you learned from it.",
     ],
     "intermediate": [
         "Describe a critical production bug you diagnosed and resolved. What was your RCA process?",
         "How do you balance technical debt reduction with feature delivery speed?",
-        "Walk me through a design decision you later regretted. What would you do differently?",
-        "How do you ensure consistent code quality in a fast-moving development team?",
         "Explain your approach to API design. What principles drive your decisions?",
-        "How have you handled a major scope change mid-sprint? What was the outcome?",
-        "Describe a time you had to optimize a slow database query in production.",
     ],
     "senior": [
         "How do you architect systems to be resilient to third-party service failures?",
-        "Describe a time you significantly influenced engineering culture in a positive way.",
-        "How do you handle fundamental architectural disagreements within a senior team?",
         "What trade-offs do you evaluate when choosing between microservices and a monolith?",
-        "How do you balance long-term architectural integrity with short-term business deadlines?",
-        "Describe your approach to designing a distributed system that must guarantee consistency.",
-        "How do you handle the onboarding of a completely new technology stack under a deadline?",
     ],
     "lead / manager": [
         "How do you manage a team member consistently missing sprint commitments?",
         "Describe how you set technical strategy aligned with business objectives.",
-        "How do you build psychological safety while maintaining high engineering standards?",
-        "Walk me through how you'd run a post-mortem after a major production incident.",
-        "How do you mentor senior engineers who are resistant to feedback?",
-        "How would you handle a conflict between two senior engineers with opposing technical views?",
-        "Describe a time you had to make an unpopular technical decision. How did you communicate it?",
     ],
 }
 
@@ -154,8 +215,6 @@ GENERIC_FALLBACK = [
     "Tell me about your most challenging technical project and your specific contributions.",
     "How do you approach learning new technologies in your domain?",
     "Describe a situation where you had to make a technical trade-off. What drove your decision?",
-    "How do you communicate complex technical decisions to non-technical stakeholders?",
-    "What is the most impactful optimization you've made in a production system?",
 ]
 
 
@@ -194,15 +253,19 @@ def _parse_questions(raw: str, n: int, role: str = "Engineer") -> list:
     return questions[:n] if questions else [f"Tell me about your experience as a {role}."]
 
 
-def _get_fallback(experience: str, n: int) -> list:
-    """Return n questions from the appropriate level's bank."""
-    key = experience.lower().strip()
-    bank = FALLBACK_BANKS.get(key, GENERIC_FALLBACK)
-    shuffled = bank.copy()
+def _get_fallback(experience: str, n: int, role: str = "Software Engineer") -> list:
+    """Return n questions from the role- and level-appropriate bank."""
+    level_key = experience.lower().strip()
+    # Try role-specific bank first
+    role_banks = ROLE_FALLBACK_BANKS.get(role, ROLE_FALLBACK_BANKS.get("Software Engineer"))
+    if isinstance(role_banks, dict):
+        bank = role_banks.get(level_key, FALLBACK_BANKS.get(level_key, GENERIC_FALLBACK))
+    else:
+        bank = FALLBACK_BANKS.get(level_key, GENERIC_FALLBACK)
+    shuffled = bank.copy() if isinstance(bank, list) else []
     random.shuffle(shuffled)
-    # pad if needed
     while len(shuffled) < n:
-        shuffled += bank
+        shuffled += bank if isinstance(bank, list) else GENERIC_FALLBACK
     return shuffled[:n]
 
 
@@ -244,11 +307,11 @@ def generate_questions(role: str, experience: str, skills: str, question_volume:
             return questions
         else:
             logging.warning("LLM returned empty/unparseable output; using fallback.")
-            return _get_fallback(experience, question_volume)
+            return _get_fallback(experience, question_volume, role)
 
     except requests.exceptions.RequestException as exc:
         logging.warning(f"LLM question generation failed ({exc}); using fallback bank.")
-        return _get_fallback(experience, question_volume)
+        return _get_fallback(experience, question_volume, role)
 
 
 def generate_followup(role: str, experience: str, previous_question: str, candidate_answer: str) -> str:

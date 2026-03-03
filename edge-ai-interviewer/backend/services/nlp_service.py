@@ -30,10 +30,12 @@ class NLPService:
                 self.model = None
 
     def _extract_keywords(self, text: str) -> List[str]:
-        # Simple extraction of significant words (length > 4, no stopwords)
-        words = re.findall(r'\b\w{5,}\b', text.lower())
-        stopwords = {"about", "there", "their", "where", "which", "though", "through"}
-        return [w for w in words if w not in stopwords]
+        # Extract significant words (5+ chars) plus key 4-char technical terms
+        words_5plus = re.findall(r'\b\w{5,}\b', text.lower())
+        tech_short = re.findall(r'\b(api|test|code|bug|data|user|team|work|design|system|product)\b', text.lower())
+        stopwords = {"about", "there", "their", "where", "which", "though", "through", "would", "could", "should"}
+        combined = [w for w in words_5plus if w not in stopwords] + list(set(tech_short))
+        return list(dict.fromkeys(combined))
 
     def score_relevance(self, question: str, answer: str) -> Dict[str, any]:
         is_fallback = any(x in answer for x in ["Transcription unavailable", "(Speech parsing error", "(Audio file missing)"])
@@ -45,26 +47,26 @@ class NLPService:
                 "metrics": {"reason": "Insufficient content", "word_count": 0}
             }
             
-        # 1. Semantic Similarity (60% weight)
+        # 1. Semantic Similarity (50% weight) — gentler mapping for fair relevance scoring
         if not self.model:
             base = min(len(answer) / max(len(question), 1), 2.0)
-            semantic_score = max(0.0, min(1.0, 0.5 + (base - 0.5) * 0.25))
+            semantic_score = max(0.0, min(1.0, 0.5 + (base - 0.5) * 0.4))
         else:
             try:
                 q_emb = self.model.encode(question, convert_to_tensor=True)
                 a_emb = self.model.encode(answer, convert_to_tensor=True)
                 sim = util.cos_sim(q_emb, a_emb).item()
-                # Industrial validation: sim < 0.15 usually means completely unrelated
-                semantic_score = max(0.0, min(1.0, (sim - 0.1) * 1.6)) if sim > 0.1 else 0.0
+                # Gentler curve: sim 0.15→0.25, 0.25→0.5, 0.35→0.65, 0.45→0.9 — answers can be on-topic without high lexical overlap
+                semantic_score = max(0.0, min(1.0, (sim - 0.03) * 2.2)) if sim > 0.03 else 0.0
             except Exception as e:
                 logging.error(f"Error computing NLP score: {e}")
                 semantic_score = 0.5
 
-        # 2. Keyword Matching (20% weight)
+        # 2. Keyword Matching (25% weight) — broader extraction, partial credit
         q_keywords = self._extract_keywords(question)
-        a_words = answer.lower()
-        keyword_hits = sum(1 for kw in q_keywords if kw in a_words)
-        keyword_score = min(keyword_hits / max(len(q_keywords), 1), 1.0) if q_keywords else 1.0
+        a_lower = answer.lower()
+        keyword_hits = sum(1 for kw in q_keywords if kw in a_lower)
+        keyword_score = min(keyword_hits / max(len(q_keywords), 1), 1.0) if q_keywords else 0.7
 
         # 3. Filler & Professionalism Penalty
         filler_words = {"um", "uh", "actually", "basically", "literally", "like", "you know", "i mean"}
@@ -75,21 +77,23 @@ class NLPService:
         filler_count = sum(1 for w in words if w in filler_words)
         informal_count = sum(1 for w in words if w in informal)
         
-        filler_penalty = min(0.15, (filler_count / max(word_count, 10)) * 0.6)
-        informal_penalty = min(0.1, (informal_count / max(word_count, 10)) * 0.4)
+        filler_penalty = min(0.12, (filler_count / max(word_count, 10)) * 0.5)
+        informal_penalty = min(0.08, (informal_count / max(word_count, 10)) * 0.3)
 
-        # 4. Content Substantiality (20% weight)
-        if word_count < 25:
-            len_score = word_count / 25.0 * 0.7
+        # 4. Content Substantiality (25% weight) — fairer for concise but relevant answers
+        if word_count < 15:
+            len_score = word_count / 15.0 * 0.5
+        elif word_count < 35:
+            len_score = 0.5 + (word_count - 15) / 40.0
         else:
-            len_score = min(1.0, (word_count / 80.0) + 0.3)
+            len_score = min(1.0, 0.7 + (word_count - 35) / 100.0)
 
-        # Final Blend
-        final_score = (semantic_score * 0.6) + (keyword_score * 0.2) + (len_score * 0.2)
+        # Final Blend — rebalance for fair content relevance
+        final_score = (semantic_score * 0.5) + (keyword_score * 0.25) + (len_score * 0.25)
         final_score = max(0.05, min(final_score - filler_penalty - informal_penalty, 1.0))
         
-        # Validation Check
-        is_valid = semantic_score > 0.1 and word_count > 12
+        # Validation: looser threshold — brief but on-topic answers can be valid
+        is_valid = (semantic_score > 0.08 or keyword_score > 0.3) and word_count >= 8
 
         return {
             "nlp_score": round(float(final_score), 2),
