@@ -58,43 +58,89 @@ const Result = () => {
   const location = useLocation()
   const navigate = useNavigate()
 
-  const [scores, setScores] = useState(location.state?.scores || {
-    facial: 0, speech: 0, nlp: 0, final: 0,
-  })
-  const [transcript, setTranscript] = useState(
-    location.state?.transcript || ''
-  )
+  // All session data loaded from API
+  const [allResponses, setAllResponses] = useState([])
+  const [sessionOverallScore, setSessionOverallScore] = useState(null)
+  const [sessionPosition, setSessionPosition] = useState('')
+  const [loadingResult, setLoadingResult] = useState(true)
+  const [fetchError, setFetchError] = useState(false)
+
+  // Displayed scores for the score meters (averaged across all responses, or from nav state)
+  const [scores, setScores] = useState(location.state?.scores || { facial: 0, speech: 0, nlp: 0, final: 0 })
+  const [transcript, setTranscript] = useState(location.state?.transcript || '')
   const [feedback, setFeedback] = useState(location.state?.feedback || '')
   const [suggestions, setSuggestions] = useState(location.state?.suggestions || [])
   const [metrics, setMetrics] = useState(location.state?.metrics || {})
-  const [loadingResult, setLoadingResult] = useState(!location.state)
+
+  // Holistic session summary
+  const [sessionSummary, setSessionSummary] = useState(null)
+  const [selectedQuestionIdx, setSelectedQuestionIdx] = useState(0)
 
   useEffect(() => {
-    if (!sessionId || location.state) return
+    if (!sessionId) return
     const load = async () => {
       try {
         setLoadingResult(true)
+        setFetchError(false)
         const { data } = await fetchResult(sessionId)
-        const last = data.responses?.[data.responses.length - 1]
-        if (last) {
-          setScores({ facial: last.facial_score, speech: last.speech_score, nlp: last.nlp_score, final: last.final_score })
-          setTranscript(last.transcript)
-          setFeedback(last.feedback || '')
-          setSuggestions(last.suggestions || [])
-          setMetrics(last.metrics || {})
+        const responses = data.responses || []
+
+        setAllResponses(responses)
+        setSessionPosition(data.position || '')
+        setSessionSummary(data.session_summary || null)
+
+        if (data.overall_score != null) {
+          setSessionOverallScore(data.overall_score)
+        }
+
+        if (responses.length > 0) {
+          // Compute averaged scores for the RADAR/METERS (overall performance)
+          const avg = (key) => {
+            const vals = responses.map(r => r[key] || 0)
+            return vals.reduce((a, b) => a + b, 0) / vals.length
+          }
+          setScores({
+            facial: avg('facial_score'),
+            speech: avg('speech_score'),
+            nlp: avg('nlp_score'),
+            final: data.overall_score || avg('final_score'),
+          })
+
+          // Initial selection
+          const initial = responses[0]
+          setTranscript(initial.transcript || '')
+          setFeedback(initial.feedback || '')
+          setSuggestions(initial.suggestions || [])
+          setMetrics(initial.metrics || {})
         }
       } catch (err) {
         console.error('Failed to load result', err)
+        setFetchError(true)
       } finally {
         setLoadingResult(false)
       }
     }
     load()
-  }, [sessionId, location.state])
+  }, [sessionId])
 
+  // Update detail view when question selection changes
+  useEffect(() => {
+    if (allResponses.length > selectedQuestionIdx) {
+      const q = allResponses[selectedQuestionIdx]
+      setTranscript(q.transcript || '')
+      setFeedback(q.feedback || '')
+      setSuggestions(q.suggestions || [])
+      setMetrics(q.metrics || {})
+    }
+  }, [selectedQuestionIdx, allResponses])
+
+  // Use session overall_score if available, otherwise fall back to last question's final score
+  const displayScore = sessionOverallScore != null
+    ? Math.round(sessionOverallScore * 100)
+    : Math.round((scores.final || 0) * 100)
   const finalPct = Math.round((scores.final || 0) * 100)
-  const scoreColor = finalPct >= 80 ? '#10b981' : finalPct >= 60 ? '#0ea5e9' : '#f43f5e'
-  const scoreGlow = finalPct >= 80 ? 'rgba(16,185,129,0.3)' : finalPct >= 60 ? 'rgba(14,165,233,0.3)' : 'rgba(244,63,94,0.3)'
+  const scoreColor = displayScore >= 80 ? '#10b981' : displayScore >= 60 ? '#0ea5e9' : '#f43f5e'
+  const scoreGlow = displayScore >= 80 ? 'rgba(16,185,129,0.3)' : displayScore >= 60 ? 'rgba(14,165,233,0.3)' : 'rgba(244,63,94,0.3)'
 
   if (loadingResult) {
     return (
@@ -185,9 +231,14 @@ const Result = () => {
             lineHeight: 1,
             color: scoreColor,
           }}>
-            {finalPct}
+            {displayScore}
             <span style={{ fontSize: '0.875rem', color: '#64748b', fontFamily: "'JetBrains Mono', monospace" }}> /100</span>
           </p>
+          {sessionOverallScore != null && allResponses.length > 1 && (
+            <p style={{ fontSize: '0.6rem', color: '#94a3b8', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em', marginTop: '0.25rem' }}>
+              AVG OF {allResponses.length} QUESTIONS
+            </p>
+          )}
         </motion.div>
       </motion.div>
 
@@ -246,6 +297,33 @@ const Result = () => {
             gap: '1.25rem',
           }}
         >
+          {/* Holistic Session Summary (only if multiple questions) */}
+          {sessionSummary && allResponses.length > 1 && (
+            <div style={{
+              background: 'rgba(14,165,233,0.04)',
+              border: '1px solid rgba(14,165,233,0.15)',
+              borderRadius: '0.75rem',
+              padding: '1rem',
+              marginBottom: '0.5rem',
+            }}>
+              <p style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: '0.55rem',
+                textTransform: 'uppercase',
+                color: '#0ea5e9',
+                marginBottom: '0.5rem',
+                fontWeight: 700,
+                letterSpacing: '0.05em'
+              }}>Overall Session Summary</p>
+              <p style={{ fontSize: '0.85rem', color: '#0f172a', fontWeight: 600, lineHeight: 1.5, marginBottom: '0.4rem' }}>
+                {sessionSummary.overall_verdict}
+              </p>
+              <p style={{ fontSize: '0.75rem', color: '#475569', lineHeight: 1.6, margin: 0 }}>
+                {sessionSummary.executive_summary}
+              </p>
+            </div>
+          )}
+
           {/* Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
             <p style={{
@@ -255,7 +333,34 @@ const Result = () => {
               textTransform: 'uppercase',
               color: '#64748b',
               margin: 0,
-            }}>AI Performance Report</p>
+            }}>{allResponses.length > 1 ? 'Detailed Question Report' : 'AI Performance Report'}</p>
+
+            {/* Question Selector (Pills) */}
+            {allResponses.length > 1 && (
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+                {allResponses.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setSelectedQuestionIdx(idx)}
+                    style={{
+                      padding: '4px 12px',
+                      borderRadius: '99px',
+                      border: '1px solid',
+                      borderColor: selectedQuestionIdx === idx ? '#0ea5e9' : 'rgba(148,163,184,0.3)',
+                      background: selectedQuestionIdx === idx ? 'rgba(14,165,233,0.06)' : 'transparent',
+                      color: selectedQuestionIdx === idx ? '#0ea5e9' : '#64748b',
+                      fontSize: '0.65rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}
+                  >
+                    Q{idx + 1}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Verdict badge — only shown when real verdict present */}
             {metrics.verdict && (() => {

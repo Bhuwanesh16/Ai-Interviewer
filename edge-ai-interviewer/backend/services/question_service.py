@@ -29,11 +29,27 @@ Avoid generic or textbook definition-based questions.
 Focus on real-world application, system thinking, optimization, and engineering trade-offs.
 """
 
+# Role-Specific Technical Guidance for High-Signal Assessment
+ROLE_SPECIFIC_THEMES = {
+    "Software Engineer": "Clean code, SOLID principles, debugging methodologies, data structures, and algorithm trade-offs.",
+    "Frontend Developer": "React/Vue ecosystem, State management (Redux/Zustand), CSS architecture, Web performance (Core Web Vitals), and Accessibility.",
+    "Backend Developer": "REST/GraphQL API design, SQL/NoSQL optimization, Caching (Redis), Security (Auth/JWT), and Distributed Systems.",
+    "Full Stack Developer": "End-to-end feature lifecycle, client-server contract management, isomorphic rendering, and database integration.",
+    "Data Scientist": "Statistical modeling, Data cleaning/EDA, Model validation, Feature engineering, and presenting insights to stakeholders.",
+    "Machine Learning Engineer": "Model deployment (Miri/FastAPI), Inference optimization, Data versioning, CI/CD for ML, and drift detection.",
+    "DevOps Engineer": "Infrastructure as Code (Terraform), CI/CD pipelines, Kubernetes/Docker, Observability (ELK/Grafana), and Site Reliability.",
+    "Product Manager": "Product strategy, Success metrics (KPIs), Prioritization frameworks (RICE), Stakeholder management, and UX empathy.",
+    "UI/UX Designer": "User research, Design systems, Prototype fidelity, Accessibility, and aligning visual vision with engineering constraints.",
+    "QA Engineer": "Automation frameworks (Playwright/Selenium), Integration testing, Shift-left testing, Bug lifecycle, and Performance testing.",
+    "Cyber Security Analyst": "Threat modeling, OWASP Top 10, Incident response, Auth/IAM policies, and compliance (SOC2/GDPR)."
+}
+
 DYNAMIC_PROMPT_TEMPLATE = """
 Interview Configuration:
 - Target Role: {role}
 - Experience Tier: {experience}
 - Core Competencies: {skills}
+- Role Themes: {role_themes}
 - Question Volume: {question_volume}
 
 CRITICAL: Generate questions SPECIFICALLY for the Target Role "{role}". 
@@ -42,6 +58,7 @@ Data Scientist, Machine Learning Engineer, DevOps Engineer, Product Manager, UI/
 QA Engineer, Cyber Security Analyst. Tailor each question to the domain and responsibilities of this role.
 
 Generation Rules:
+- Primary Focus: {role_themes}
 - Adjust difficulty based on experience tier.
 - Entry Level → implementation-focused, learning-oriented, hands-on.
 - Intermediate → design + optimization + trade-offs, real-world scenarios.
@@ -87,29 +104,31 @@ Follow-up: <question>
 
 FEEDBACK_PROMPT_TEMPLATE = """
 Interview Evaluator Mode:
-Evaluate the following interview response like a senior engineering lead. 
-Provide a concise, professional, and actionable assessment.
+Evaluate the following interview response like a senior engineering lead from a top-tier tech company. 
+Provide a sophisticated, encouraging, but technically rigorous assessment.
 
 Context:
 - Role: {role}
-- Experience: {experience}
+- Experience Level: {experience}
 - Question Asked: {question}
-- Candidate Answer: {transcript}
-- Metric Scores: Facial={facial_score}, Speech={speech_score}, Content={nlp_score}
+- Candidate's Transcribed Answer: "{transcript}"
+- Dimensional Scores (0-1 scale): Facial/Presence={facial_score}, Speech/Clarity={speech_score}, Content/Relevance={nlp_score}
 
-Your Evaluation Rules:
-1. Write 2-3 sentences of direct, supportive yet firm professional feedback.
-2. Focus on the substance of the answer and the delivery.
-3. Be specific to the role and seniority level.
-4. Do not mention the numerical scores directly; use qualitative descriptors.
-5. Provide 3 specific, bulleted technical improvements or "Next Steps".
+Your Evaluation Goal:
+Produce a structured report that helps the candidate understand their specific gaps and strengths.
+
+Evaluation Rules:
+1. STRENGTHS: Start with 1-2 sentences highlighting what the candidate did well (e.g., specific keywords used, good structure, confident delivery).
+2. EVALUATOR NOTES: Provide 2-3 sentences of deep technical feedback. Focus on the substance—what were they missing? Was the logic sound? Use professional, industry-standard terminology.
+3. TECHNICAL IMPROVEMENTS: Provide 3 distinct, actionable, and DEEPLY technical improvements. Avoid generic advice like "be more confident." Instead, suggest specific frameworks, patterns, or methodologies (e.g., "Use the STAR method," "Mention Big-O complexity," "Reference ACID properties").
 
 Output Format:
-Feedback: <Your paragraph assessment>
+Strengths: <Concise bullet points of what they did well>
+Feedback: <Your narrative evaluation>
 Improvements:
-- <Improvement 1>
-- <Improvement 2>
-- <Improvement 3>
+- <Deeply technical improvement 1>
+- <Deeply technical improvement 2>
+- <Deeply technical improvement 3>
 """
 
 # ---------------------------------------------------------------------------
@@ -122,70 +141,70 @@ def _level_bank(entry: list, intermediate: list, senior: list, lead: list) -> di
 
 ROLE_FALLBACK_BANKS = {
     "Software Engineer": _level_bank(
-        ["Walk me through a personal project you've built from scratch.", "How do you approach debugging unfamiliar code?", "Describe a time you learned a new technology quickly.", "What technical concept did you recently master? Explain it to a peer."],
-        ["Describe a critical production bug you diagnosed and resolved. What was your RCA process?", "How do you balance technical debt reduction with feature delivery?", "Explain your approach to API design. What principles drive your decisions?", "How have you handled a major scope change mid-sprint?"],
-        ["How do you architect systems to be resilient to third-party service failures?", "What trade-offs do you evaluate when choosing between microservices and a monolith?", "Describe your approach to designing a distributed system that must guarantee consistency."],
-        ["How do you manage a team member consistently missing sprint commitments?", "Describe how you set technical strategy aligned with business objectives.", "Walk me through how you'd run a post-mortem after a major production incident."],
+        ["How do you ensure your code follows 'Clean Code' principles and remains maintainable?", "Walk me through your process for debugging a memory leak or unexpected crash.", "Explain the difference between a process and a thread in a way that relates to an app you've built.", "How do you choose between using an Array vs a Linked List for a specific problem?"],
+        ["Describe a critical production bug you diagnosed and resolved using a Root Cause Analysis (RCA) process.", "How do you balance technical debt reduction with the pressure to deliver new features?", "Explain your approach to Designing a Scalable API. What principles drive your decisions?", "Describe a time you had to optimize a slow algorithm. What was the Big-O before and after?"],
+        ["How do you architect systems to be resilient to partial failures in a distributed environment?", "What trade-offs do you evaluate when choosing between microservices and a well-structured monolith?", "Describe your approach to designing a system that must handle 10x current traffic without a complete rewrite.", "Explain how you handle data consistency vs availability in a distributed database system."],
+        ["How do you manage a high-performing senior engineer who is consistently missing commitments?", "Describe how you align a multi-year technical roadmap with the immediate needs of the business.", "Walk me through how you'd run a high-stakes post-mortem after a massive system outage.", "How do you foster a culture of technical excellence and mentorship within your engineering org?"],
     ),
     "Frontend Developer": _level_bank(
-        ["Describe a React or Vue component you built and how you managed its state.", "How do you ensure your UI is accessible and responsive?", "Walk me through a time you fixed a tricky CSS or layout issue."],
-        ["How do you optimize frontend performance for slow networks or large bundles?", "Describe your approach to component architecture and reusability.", "How do you handle state management in a complex SPA? What patterns do you use?"],
-        ["How would you design a frontend architecture for a multi-team monorepo?", "What trade-offs do you consider when choosing between SSR and CSR?", "How do you ensure consistent UX across browsers and devices at scale?"],
-        ["How do you mentor junior frontend developers on best practices?", "How do you align frontend roadmap with product and design priorities?"],
+        ["Describe a component you built recently. How did you handle its internal state and props?", "How do you ensure your UI is accessible (A11y) and performs well on low-end devices?", "Explain how you'd optimize a page that has a high Largest Contentful Paint (LCP) score.", "Walk me through a time you fixed a complex responsiveness issue that only appeared on certain browsers."],
+        ["How do you manage complex application state in a large-scale SPA? What patterns do you prefer?", "Describe your approach to building a reusable UI component library that multiple teams can use.", "How do you handle error boundaries and global error states in a modern frontend framework?", "Explain your strategy for code-splitting and bundle size optimization in a production app."],
+        ["How would you design a frontend architecture for a multi-team monorepo using Micro-Frontends?", "What trade-offs do you consider when choosing between Server-Side Rendering (SSR) and Client-Side Rendering (CSR)?", "How do you ensure consistent UX/UI standards are maintained across dozens of different products?", "Describe your approach to implementing a robust end-to-end (E2E) testing strategy for a complex user flow."],
+        ["How do you mentor junior frontend developers on modern best practices like testing and modularity?", "How do you bridge the gap between design vision and technical feasibility during early project stages?", "Describe how you'd lead a migration from a legacy framework to a modern one without stopping feature work.", "How do you set the technical standard for CSS architecture and performance across the company?"],
     ),
     "Backend Developer": _level_bank(
-        ["Walk me through an API you designed. What considerations did you have?", "Describe a time you optimized a slow database query.", "How do you handle errors and logging in backend services?"],
-        ["How do you design APIs for high concurrency and low latency?", "Describe your approach to database schema design and migrations.", "How do you ensure backward compatibility when evolving APIs?"],
-        ["How do you design systems to be resilient to third-party failures?", "What trade-offs do you evaluate when choosing between SQL and NoSQL?", "Describe your approach to event-driven or message-based architectures."],
-        ["How do you set technical standards for backend services across teams?", "Walk me through how you'd run a post-mortem for a production outage."],
+        ["Walk me through a RESTful API you designed. How did you handle versioning and error codes?", "Describe a time you optimized a slow SQL query. What tools or techniques (like EXPLAIN) did you use?", "How do you handle logging and monitoring in your services to catch issues before users do?", "Explain the difference between authentication and authorization in a backend context."],
+        ["How do you design APIs that can handle high concurrency and low latency requirements?", "Describe your approach to database schema migrations. How do you ensure zero-downtime deployments?", "How do you ensure backward compatibility when making breaking changes to an internal service?", "Explain your strategy for implementing a robust caching layer using Redis or Memcached."],
+        ["How do you design systems to be resilient to cascades of failures in a microservices architecture?", "What trade-offs do you evaluate when choosing between SQL (acid-compliant) and NoSQL (eventually consistent) stores?", "Describe your approach to implementing an event-driven or message-based architecture using RabbitMQ or Kafka.", "How do you handle security vulnerabilities like SQL Injection or SSRF at the application layer?"],
+        ["How do you set technical standards and architectural patterns for backend services across multiple teams?", "Walk me through how you'd lead the technical recovery of a system that is down during a peak traffic event.", "How do you balance the cost of infrastructure with the need for high availability and performance?", "Describe your approach to mentoring senior architects and fostering a culture of ownership."],
     ),
     "Full Stack Developer": _level_bank(
-        ["Describe a full-stack feature you shipped end-to-end. What was your process?", "How do you split work between frontend and backend when building a feature?"],
-        ["How do you maintain consistency between frontend and backend contracts?", "Describe a time you had to optimize both client and server performance.", "How do you choose which logic lives on the client vs the server?"],
-        ["How would you design a full-stack architecture for a real-time collaborative app?", "What trade-offs do you consider when building isomorphic or SSR applications?"],
-        ["How do you mentor full-stack developers across the entire stack?", "How do you balance feature velocity with technical quality across the stack?"],
+        ["Describe a full-stack feature you shipped end-to-end. What was your process?", "How do you handle consistency between frontend and backend contracts?"],
+        ["Describe a time you had to optimize both client and server performance for a slow feature.", "How do you choose which business logic lives on the client vs the server?"],
+        ["How would you design a scalable full-stack architecture for a real-time collaborative application?", "What trade-offs do you consider when building isomorphic or server-side rendered apps?"],
+        ["How do you mentor full-stack developers to maintain high quality across both the frontend and backend?", "Describe how you lead a major architectural transition across the entire web stack."],
     ),
     "Data Scientist": _level_bank(
-        ["Describe a data analysis project you completed. What was your approach?", "How do you validate that your model or analysis is correct?", "Walk me through a time you cleaned or preprocessed messy data."],
-        ["How do you choose between different modeling approaches for a given problem?", "Describe a time you communicated complex results to non-technical stakeholders.", "How do you handle imbalanced or missing data in your pipeline?"],
-        ["How would you design an ML pipeline for production at scale?", "What trade-offs do you evaluate when selecting features or models?", "How do you ensure model fairness and interpretability?"],
-        ["How do you align data science roadmap with business KPIs?", "How do you mentor data scientists on best practices and reproducibility?"],
+        ["Walk me through a data analysis project you completed. What were your key findings?", "How do you validate that your statistical model or analysis is correct?"],
+        ["How do you choose between different modeling approaches for a specific business problem?", "Describe a time you communicated complex data results to non-technical stakeholders."],
+        ["How would you design an ML pipeline for production scalability?", "What trade-offs do you evaluate when selecting features vs model complexity?"],
+        ["How do you align the data science roadmap with the long-term business KPIs?", "How do you mentor data scientists on best practices and scientific reproducibility?"],
     ),
     "Machine Learning Engineer": _level_bank(
-        ["Describe an ML model you trained and deployed. What was your workflow?", "How do you debug a model that underperforms in production?", "Walk me through how you version datasets and models."],
-        ["How do you optimize model inference latency for real-time use cases?", "Describe your approach to A/B testing model changes in production.", "How do you handle data drift and model retraining?"],
-        ["How would you design an ML platform for multiple teams and models?", "What trade-offs do you consider when choosing between batch and real-time inference?", "How do you ensure reproducibility and auditability of ML pipelines?"],
-        ["How do you set ML engineering standards across the organization?", "How do you balance experimentation speed with production stability?"],
+        ["Describe an ML model you trained and deployed. What was your end-to-end workflow?", "How do you debug a model that is significantly underperforming in production?"],
+        ["How do you optimize model inference latency for real-time web use cases?", "Describe your approach to A/B testing model changes in a production environment."],
+        ["How would you design an ML platform that supports multiple internal teams and models?", "What trade-offs do you consider when choosing between batch and real-time inference?"],
+        ["How do you set ML engineering standards across your organization?", "How do you balance speed of experimentation with the stability of production models?"],
     ),
     "DevOps Engineer": _level_bank(
-        ["Describe a CI/CD pipeline you built or improved. What was your role?", "How do you troubleshoot a service that's slow or failing in production?", "Walk me through your approach to configuration management."],
-        ["How do you design infrastructure for high availability and disaster recovery?", "Describe your approach to monitoring and alerting. What do you measure?", "How do you manage secrets and security in deployment pipelines?"],
-        ["How would you design a multi-region deployment strategy?", "What trade-offs do you consider when choosing between Kubernetes and simpler orchestration?", "How do you balance infrastructure cost with performance and reliability?"],
-        ["How do you lead incident response and post-mortem culture?", "How do you align DevOps practices with development and product teams?"],
+        ["Describe a CI/CD pipeline you built or improved. What were the key bottlenecks?", "How do you troubleshoot a service that is intermittently failing in a production cluster?"],
+        ["How do you design infrastructure for high availability and automated disaster recovery?", "Describe your approach to monitoring and proactive alerting. What metrics matter most?"],
+        ["How would you design a multi-region deployment strategy for a global application?", "What trade-offs do you consider when choosing between Kubernetes and serverless orchestration?"],
+        ["How do you lead the cultural shift towards SRE and post-mortem accountability?", "How do you align DevOps practices with the daily workflows of your development teams?"],
     ),
     "Product Manager": _level_bank(
-        ["Describe a product decision you made based on user feedback. What was the outcome?", "How do you prioritize features when resources are limited?", "Walk me through how you define success metrics for a feature."],
-        ["How do you balance stakeholder requests with product strategy?", "Describe a time you had to deprioritize a feature. How did you communicate it?", "How do you work with engineering to scope and ship on time?"],
-        ["How do you drive product strategy in a competitive market?", "What trade-offs do you make when balancing innovation with technical debt?", "How do you align roadmaps across multiple teams or product lines?"],
-        ["How do you mentor product managers and build product culture?", "How do you handle conflict between product vision and engineering constraints?"],
+        ["Describe a product decision you made based on user feedback. What was the measured outcome?", "How do you prioritize features when you have highly limited engineering resources?"],
+        ["How do you balance aggressive stakeholder requests with a long-term product strategy?", "Describe a time you had to deprioritize a major feature. How did you communicate it?"],
+        ["How do you drive cohesive product strategy in an extremely competitive or shifting market?", "What trade-offs do you make when balancing innovation with clearing technical debt?"],
+        ["How do you mentor junior product managers and foster a mature product culture?", "How do you resolve fundamental conflicts between product vision and engineering constraints?"],
     ),
     "UI/UX Designer": _level_bank(
-        ["Walk me through a design project from research to final deliverable.", "How do you incorporate user feedback into your designs?", "Describe a time you simplified a complex user flow."],
-        ["How do you balance user needs with business goals and technical constraints?", "Describe your approach to design systems and component libraries.", "How do you measure the success of a design change?"],
-        ["How would you lead design for a new product from scratch?", "What trade-offs do you consider when choosing between consistency and innovation?", "How do you ensure accessibility and inclusion in your designs?"],
-        ["How do you mentor designers and foster design maturity in the org?", "How do you align design vision with engineering and product?"],
+        ["Walk me through a design project from initial research to the final hand-off.", "How do you incorporate conflicting user feedback into your design iterations?"],
+        ["How do you balance user needs with business goals and technical engineering constraints?", "Describe your approach to building and maintaining a scalable design system."],
+        ["How would you lead the design for an entirely new product from the ground up?", "What trade-offs do you consider when choosing between UI consistency and UX innovation?"],
+        ["How do you mentor other designers and foster design maturity within the organization?", "How do you align a long-term design vision with the reality of engineering sprints?"],
     ),
     "QA Engineer": _level_bank(
-        ["Describe your testing strategy for a recent feature. What did you cover?", "How do you decide when to automate vs manually test?", "Walk me through a bug you found that was hard to reproduce."],
-        ["How do you design test cases for complex or legacy systems?", "Describe your approach to regression testing and release criteria.", "How do you work with developers to improve testability?"],
-        ["How would you design a QA strategy for a new product or platform?", "What trade-offs do you consider when choosing test automation frameworks?", "How do you balance coverage with test maintenance cost?"],
-        ["How do you lead quality initiatives across engineering teams?", "How do you align QA metrics with product and business goals?"],
+        ["Describe your testing strategy for a recent complex feature. What did you cover?", "How do you decide when to invest in automation vs sticking to manual testing?"],
+        ["How do you design test cases for complex legacy systems that lack documentation?", "Describe your approach to regression testing and defining 'Ready for Release' criteria."],
+        ["How would you design a holistic QA strategy for an entire new platform or product?", "What trade-offs do you consider when choosing between different test automation frameworks?"],
+        ["How do you lead quality-first initiatives across multiple engineering teams?", "How do you align QA metrics with the actual product and business goals?"],
     ),
     "Cyber Security Analyst": _level_bank(
-        ["Describe a security assessment or audit you performed. What did you find?", "How do you stay updated on emerging threats and vulnerabilities?", "Walk me through how you'd respond to a suspected breach."],
-        ["How do you prioritize remediation when multiple vulnerabilities are found?", "Describe your approach to penetration testing or red team exercises.", "How do you communicate security risks to non-technical stakeholders?"],
-        ["How would you design a security program for a growing company?", "What trade-offs do you consider when balancing security with usability?", "How do you ensure compliance and audit readiness?"],
-        ["How do you build security culture across engineering and operations?", "How do you align security initiatives with business priorities?"],
+        ["Describe a security assessment or audit you performed. What were your top findings?", "How do you stay updated on rapidly emerging threats and zero-day vulnerabilities?"],
+        ["How do you prioritize remediation when hundreds of vulnerabilities are found simultaneously?", "Describe your approach to penetration testing or red team simulation exercises."],
+        ["How would you design a comprehensive security program for a rapidly growing startup?", "What trade-offs do you consider when balancing extreme security with user usability?"],
+        ["How do you build a security-first culture across both engineering and operations?", "How do you align critical security initiatives with the overall business priorities?"],
     ),
 }
 
@@ -221,15 +240,8 @@ GENERIC_FALLBACK = [
 def _parse_questions(raw: str, n: int, role: str = "Engineer") -> list:
     """
     Parse the LLM output into a clean list of question strings.
-
-    The LLM is instructed to produce:
-        Q1: <question>
-        Q2: <question>
-
-    This parser is tolerant of minor formatting deviations.
     """
     if isinstance(raw, list):
-        # already a list (returned by fallback path)
         return [q for q in raw if isinstance(q, str) and len(q.strip()) > 5][:n]
 
     questions = []
@@ -246,7 +258,6 @@ def _parse_questions(raw: str, n: int, role: str = "Engineer") -> list:
             if len(q) > 10:
                 questions.append(q)
 
-    # Fallback: if regex found nothing, treat any non-trivial line as a question
     if not questions:
         questions = [l.strip() for l in lines if len(l.strip()) > 20]
 
@@ -256,32 +267,28 @@ def _parse_questions(raw: str, n: int, role: str = "Engineer") -> list:
 def _get_fallback(experience: str, n: int, role: str = "Software Engineer") -> list:
     """Return n questions from the role- and level-appropriate bank."""
     level_key = experience.lower().strip()
-    # Try role-specific bank first
     role_banks = ROLE_FALLBACK_BANKS.get(role, ROLE_FALLBACK_BANKS.get("Software Engineer"))
-    if isinstance(role_banks, dict):
-        bank = role_banks.get(level_key, FALLBACK_BANKS.get(level_key, GENERIC_FALLBACK))
-    else:
-        bank = FALLBACK_BANKS.get(level_key, GENERIC_FALLBACK)
-    shuffled = bank.copy() if isinstance(bank, list) else []
+    bank = role_banks.get(level_key, FALLBACK_BANKS.get(level_key, GENERIC_FALLBACK))
+    
+    shuffled = bank.copy()
     random.shuffle(shuffled)
     while len(shuffled) < n:
-        shuffled += bank if isinstance(bank, list) else GENERIC_FALLBACK
+        shuffled += bank
     return shuffled[:n]
 
 
 def generate_questions(role: str, experience: str, skills: str, question_volume: int) -> list:
     """
     Generate interview questions via the local Ollama service.
-
-    Returns a Python list of question strings (never raw LLM text).
-    Falls back to a role/level-aware static bank if Ollama is unavailable.
     """
     question_volume = max(1, int(question_volume))
+    role_themes = ROLE_SPECIFIC_THEMES.get(role, "General engineering trade-offs and best practices.")
 
     prompt = MASTER_PROMPT + "\n" + DYNAMIC_PROMPT_TEMPLATE.format(
         role=role,
         experience=experience,
-        skills=skills if skills else "General engineering skills",
+        skills=skills if skills else "General area-appropriate skills",
+        role_themes=role_themes,
         question_volume=question_volume,
     )
 
@@ -297,7 +304,7 @@ def generate_questions(role: str, experience: str, skills: str, question_volume:
                     "num_predict": 512,
                 },
             },
-            timeout=60,  # LLM can be slow on first load
+            timeout=60,
         )
         response.raise_for_status()
         raw = response.json().get("response", "")
@@ -306,10 +313,9 @@ def generate_questions(role: str, experience: str, skills: str, question_volume:
             logging.info(f"LLM generated {len(questions)} questions for {role} ({experience})")
             return questions
         else:
-            logging.warning("LLM returned empty/unparseable output; using fallback.")
             return _get_fallback(experience, question_volume, role)
 
-    except requests.exceptions.RequestException as exc:
+    except Exception as exc:
         logging.warning(f"LLM question generation failed ({exc}); using fallback bank.")
         return _get_fallback(experience, question_volume, role)
 
@@ -317,7 +323,6 @@ def generate_questions(role: str, experience: str, skills: str, question_volume:
 def generate_followup(role: str, experience: str, previous_question: str, candidate_answer: str) -> str:
     """
     Ask the LLM for a context-aware follow-up question.
-    Falls back to a generic elaboration prompt if Ollama is unavailable.
     """
     prompt = MASTER_PROMPT + "\n" + FOLLOWUP_PROMPT_TEMPLATE.format(
         role=role,
@@ -338,11 +343,9 @@ def generate_followup(role: str, experience: str, previous_question: str, candid
         )
         response.raise_for_status()
         raw = response.json().get("response", "")
-        # Strip the "Follow-up:" prefix if present
         cleaned = re.sub(r'^Follow-up[:.]\s*', '', raw.strip(), flags=re.IGNORECASE)
         return cleaned if cleaned else f"Can you elaborate more on: '{previous_question}'?"
-    except requests.exceptions.RequestException as exc:
-        logging.warning(f"LLM follow-up generation failed ({exc}); returning generic fallback.")
+    except Exception:
         return f"Can you elaborate more on: '{previous_question}'?"
 
 
@@ -371,20 +374,24 @@ def generate_ai_feedback(role, experience, question, transcript, scores):
         response.raise_for_status()
         raw = response.json().get("response", "")
         
-        # Parse output
+        strengths_match = re.search(r'Strengths:\s*(.*?)(?=Feedback:|$)', raw, re.DOTALL | re.IGNORECASE)
         feedback_match = re.search(r'Feedback:\s*(.*?)(?=Improvements:|$)', raw, re.DOTALL | re.IGNORECASE)
         improvements_match = re.search(r'Improvements:\s*(.*)', raw, re.DOTALL | re.IGNORECASE)
         
-        feedback = feedback_match.group(1).strip() if feedback_match else ""
-        improvements_raw = improvements_match.group(1).strip() if improvements_match else ""
+        strengths = strengths_match.group(1).strip() if strengths_match else ""
+        feedback_core = feedback_match.group(1).strip() if feedback_match else ""
         
-        # Clean bullets
+        if strengths:
+            feedback = f"Strengths: {strengths}\n\nEvaluator Notes: {feedback_core}"
+        else:
+            feedback = feedback_core
+            
+        improvements_raw = improvements_match.group(1).strip() if improvements_match else ""
         suggestions = [re.sub(r'^[-*•\s\d.]+', '', line).strip() for line in improvements_raw.splitlines() if line.strip()]
         
         return {
             "feedback": feedback,
             "suggestions": suggestions[:3]
         }
-    except Exception as exc:
-        logging.warning(f"LLM feedback generation failed ({exc})")
+    except Exception:
         return None

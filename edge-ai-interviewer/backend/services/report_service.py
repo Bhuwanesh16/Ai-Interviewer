@@ -36,78 +36,76 @@ class ReportService:
                 # Success! Return AI feedback
                 return self._finalize_report(scores, transcript, ai_data["feedback"], ai_data["suggestions"], speech_details, nlp_details, is_fallback_transcript)
 
-        # --- Rules-Based Fallback: Feedback driven by score breakdown ---
-        feedback_points = []
-        suggestions = []
-        facial_pct = int(round((facial or 0) * 100))
-        speech_pct = int(round((speech or 0) * 100))
-        nlp_pct = int(round((nlp or 0) * 100))
+        # --- Rules-Based Fallback ---
+        # Advanced Phrasing Engine
+        phrasings = {
+            "strengths": {
+                "high": ["You demonstrated exceptional technical depth.", "Your response shows a clear command of this domain.", "Excellent articulation of core engineering concepts."],
+                "mid": ["You have a solid foundational understanding of the topic.", "Your answer correctly identifies the primary trade-offs.", "Good effort in structuring your technical explanation."],
+                "low": ["Appreciate your direct approach to the question.", "You clearly put thought into the implementation details.", "Good energy throughout your response."]
+            },
+            "nlp": {
+                "high": "Your content alignment was outstanding, covering both the direct constraints and wider architectural implications.",
+                "mid": "The response was relevant and covered the basics, though adding more quantitative results would strengthen it.",
+                "low": "The content diverged significantly from the core question. Focus on addressing the specific 'Problem' stated."
+            },
+            "speech": {
+                "high": "Your delivery was exceptionally clear, with professional modulation and a steady, authoritative pace.",
+                "mid": "Clarity was sufficient for a technical discussion, with minor room for improvement in verbal energy.",
+                "low": "Speech clarity was below the expected professional standard, which might lead to miscommunication in team settings."
+            },
+            "facial": {
+                "high": "You maintained excellent professional presence and looked comfortable with the complexity of the topic.",
+                "mid": "Presence was adequate, though more active engagement can help build better rapport with stakeholders.",
+                "low": "Non-verbal engagement was limited; projecting more energy would help convey technical confidence."
+            }
+        }
 
+        # Select phrasings based on scores
+        def pick(category, score):
+            if score >= 0.85: tier = "high"
+            elif score >= 0.5: tier = "mid"
+            else: tier = "low"
+            val = phrasings[category][tier]
+            return random.choice(val) if isinstance(val, list) else val
+
+        feedback_sections = []
+        
         nlp_metrics = nlp_details.get("metrics", {}) if nlp_details else {}
         is_valid = nlp_details.get("is_valid", True) if nlp_details else True
         word_count = nlp_metrics.get("word_count", 0 if is_fallback_transcript else len(transcript.split()))
-        speech_metrics = speech_details.get("metrics", {}) if speech_details else {}
-        clarity = speech_metrics.get("clarity", "Unknown")
-        pace = speech_metrics.get("pace", "Optimal")
-        filler_count = nlp_metrics.get("filler_word_count", 0)
 
-        # Score-based opening: tie feedback to the three dimensions
-        feedback_points.append(
-            f"Based on your scores (Expression {facial_pct}%, Voice clarity {speech_pct}%, Content relevance {nlp_pct}%): "
-            + f"Expression was {'strong' if facial_pct >= 70 else 'adequate' if facial_pct >= 50 else 'low'}, "
-            + f"voice clarity was {'clear' if speech_pct >= 70 else 'acceptable' if speech_pct >= 50 else 'needs improvement'}, "
-            + f"and content relevance was {'strong' if nlp_pct >= 70 else 'moderate' if nlp_pct >= 50 else 'below target'}."
-        )
+        # 1. Strengths section (always first)
+        overall_avg = (facial + speech + nlp) / 3
+        feedback_sections.append(f"Strengths: {pick('strengths', overall_avg)}")
 
-        # 1. Technical / transcript issues
+        # 2. Detailed Dimension Assessment
+        evaluator_notes = []
+        evaluator_notes.append(pick("nlp", nlp))
+        evaluator_notes.append(pick("speech", speech))
+        evaluator_notes.append(pick("facial", facial))
+        
         if is_fallback_transcript:
-            feedback_points.append("Audio capture encountered technical hurdles, preventing full semantic analysis of your response.")
-            suggestions.append("Verify your hardware connection and test your microphone in the setup screen to ensure clear recording.")
-        # 2. Content (driven by nlp score)
-        elif nlp < 0.3 or not is_valid:
-            feedback_points.append("Content relevance was low — the response lacked direct alignment with the specific engineering constraints mentioned in the question.")
-            suggestions.append("Focus on the 'Action' phase of your answer; clearly define the steps you took rather than speaking in generalities.")
-        elif nlp >= 0.85:
-            feedback_points.append("Your technical depth was outstanding; you correctly addressed the core system design trade-offs.")
-        elif nlp >= 0.5:
-            feedback_points.append("Content relevance was moderate. Integrating more specific technical implementation details would strengthen your authority.")
-            suggestions.append("Weave in role-specific keywords from the job description and concrete, job-relevant examples.")
+            evaluator_notes.append("Note: Audio capture encountered technical hurdles, limiting full semantic analysis.")
+        elif word_count < 20:
+            evaluator_notes.append("The response was quite brief; industrial-level interviews usually require more elaboration on the 'Result' aspect.")
+
+        feedback_sections.append(f"Evaluator Notes: {' '.join(evaluator_notes)}")
+
+        suggestions = []
+        # Suggestions based on weakest area
+        weakest = min([("nlp", nlp), ("speech", speech), ("facial", facial)], key=lambda x: x[1])
+        if weakest[0] == "nlp":
+            suggestions = ["Incorporate more role-specific technical keywords.", "Use the STAR method to structure your narrative.", "Elaborate more on specific trade-offs made."]
+        elif weakest[0] == "speech":
+            suggestions = ["Work on a more consistent speaking pace.", "Practice intentional pauses after major points.", "Ensure you're recording in a low-noise environment."]
         else:
-            feedback_points.append("Content relevance was below target. Industrial-level interviews require more elaboration on the 'Result' aspect of your work and alignment with the question.")
-            suggestions.append("Align your answers more closely with the job description by using role-specific keywords and concrete, job-relevant examples.")
+            suggestions = ["Maintain more consistent eye contact with the camera.", "Project more energy into your delivery.", "Practice in front of a mirror to observe your micro-expressions."]
 
-        # 3. Delivery (driven by speech score)
-        if clarity in ("Error", "Unknown", "No Signal"):
-            feedback_points.append("Audio analysis encountered technical issues; voice clarity could not be fully assessed.")
-            suggestions.append("Verify your microphone and try again in a quiet environment.")
-        elif speech < 0.5 or clarity == "Low Quality":
-            feedback_points.append("Voice clarity was weak — the audio had interference or low quality, which would make it difficult for interviewers to follow your logic.")
-            suggestions.append("Speak clearly and test your microphone; ensure minimal background noise.")
-        elif pace == "Fast":
-            feedback_points.append("Your pace was somewhat rushed. Slowing down by about 10–15% will help your technical points land better.")
-            suggestions.append("Apply intentional pauses after significant technical points to let the interviewer digest the information.")
-        elif pace == "Slow":
-            feedback_points.append("Your delivery was very deliberate. A slightly more energetic pace would convey more enthusiasm for the role.")
+        if is_fallback_transcript:
+            suggestions.append("Verify your hardware connection and mic settings.")
 
-        # 4. Expression (driven by facial score)
-        if facial < 0.4:
-            feedback_points.append("Expression was low. Demonstrating more facial engagement and energy can help build a stronger connection with the hiring team.")
-            suggestions.append("Maintain more consistent, engaged facial expressions to project confidence and interest.")
-        elif facial >= 0.8:
-            feedback_points.append("You maintained an excellent professional presence and looked comfortable while explaining complex ideas.")
-
-        # 5. Length / structure (context for content score)
-        if word_count > 60:
-            feedback_points.append("You provided a thorough explanation with good narrative stamina.")
-        elif 0 < word_count < 25 and not is_fallback_transcript:
-            feedback_points.append("The response was quite brief; more elaboration on the 'Result' aspect of your work would strengthen it.")
-
-        # 6. Filler words
-        if filler_count > 5:
-            feedback_points.append(f"Verbal fillers ({filler_count} hits) slightly interrupted the flow of your explanation.")
-            suggestions.append("Replace filler words with silent 'thinking pauses' — this projects more confidence than filled pauses.")
-
-        fallback_feedback = " ".join(feedback_points)
+        fallback_feedback = "\n\n".join(feedback_sections)
         return self._finalize_report(scores, transcript, fallback_feedback, suggestions, speech_details, nlp_details, is_fallback_transcript)
 
     def _finalize_report(self, scores, transcript, feedback, suggestions, speech_details, nlp_details, is_fallback_transcript):
@@ -171,6 +169,40 @@ class ReportService:
                 "content_validity": content_validity,
                 "sentiment_profile": "Professional & Balanced" if final > 0.7 else "Developing Authority"
             }
+        }
+
+    def aggregate_session_report(self, responses: List[Dict]) -> Dict[str, any]:
+        """Generates a holistic summary across multiple interview responses."""
+        if not responses:
+            return {"executive_summary": "No data available.", "overall_verdict": "N/A"}
+
+        avg_score = sum(r.get('final_score', 0) for r in responses) / len(responses)
+        
+        # Analyze trends
+        if len(responses) >= 2:
+            first_half = sum(r.get('final_score', 0) for r in responses[:len(responses)//2]) / (len(responses)//2)
+            second_half = sum(r.get('final_score', 0) for r in responses[len(responses)//2:]) / (len(responses) - len(responses)//2)
+            trend = "improving" if second_half > first_half + 0.05 else "declining" if second_half < first_half - 0.05 else "consistent"
+        else:
+            trend = "stable"
+
+        # Holistic verdict
+        if avg_score > 0.85: verdict = "Ready for Senior/Lead roles with exceptional delivery."
+        elif avg_score > 0.70: verdict = "Strong professional standard; minor refinements needed in delivery."
+        elif avg_score > 0.50: verdict = "Capable with good foundations; focus on technical depth and confidence."
+        else: verdict = "Developing performance; significant growth needed in technical articulation."
+
+        executive_summary = (
+            f"Overall, you maintained a {trend} performance level with an average score of {int(avg_score*100)}%. "
+            + f"Your performance suggests a '{verdict.split(';')[0]}' status. "
+            + ("You showed notable improvement as the session progressed." if trend == "improving" else "")
+        )
+
+        return {
+            "executive_summary": executive_summary,
+            "overall_verdict": verdict,
+            "session_trend": trend,
+            "response_count": len(responses)
         }
 
 

@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { fetchHistory } from '../services/api'
@@ -23,6 +23,7 @@ const features = [
 
 const Home = () => {
   const navigate = useNavigate()
+  const location = useLocation()
   const [sessions, setSessions] = useState([])
   const [loading, setLoading] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -35,9 +36,9 @@ const Home = () => {
 
   const liveMetrics = latestResponse
     ? [
-      { label: 'Emotion', value: latestResponse.facial_score?.toFixed(2) || '—', color: '#10b981', glow: 'rgba(16,185,129,0.3)', sub: 'Facial expression' },
-      { label: 'Speech', value: latestResponse.speech_score?.toFixed(2) || '—', color: '#0ea5e9', glow: 'rgba(14,165,233,0.3)', sub: 'Pace & clarity' },
-      { label: 'Content', value: latestResponse.nlp_score?.toFixed(2) || '—', color: '#8b5cf6', glow: 'rgba(139,92,246,0.3)', sub: 'Relevance' },
+      { label: 'Emotion', value: latestResponse.facial_score != null ? (latestResponse.facial_score * 100).toFixed(0) : '—', color: '#10b981', glow: 'rgba(16,185,129,0.3)', sub: 'Facial expression' },
+      { label: 'Speech', value: latestResponse.speech_score != null ? (latestResponse.speech_score * 100).toFixed(0) : '—', color: '#0ea5e9', glow: 'rgba(14,165,233,0.3)', sub: 'Pace & clarity' },
+      { label: 'Content', value: latestResponse.nlp_score != null ? (latestResponse.nlp_score * 100).toFixed(0) : '—', color: '#8b5cf6', glow: 'rgba(139,92,246,0.3)', sub: 'Relevance' },
     ]
     : [
       { label: 'Emotion', value: '—', color: '#10b981', glow: 'rgba(16,185,129,0.3)', sub: 'Facial expression' },
@@ -49,6 +50,7 @@ const Home = () => {
     ? Math.round(latestSession.overall_score * 100)
     : null
 
+  // Re-fetch history every time the user navigates to Home (location.key changes on each visit)
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (!token) {
@@ -70,7 +72,7 @@ const Home = () => {
         }
       })
       .finally(() => setLoading(false))
-  }, [])
+  }, [location.key])
 
   const fmtDate = (iso) => {
     if (!iso) return '—'
@@ -304,23 +306,50 @@ const Home = () => {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {sessions.map((session) => {
-                const overallPct = session.overall_score ? Math.round(session.overall_score * 100) : null
+                const overallPct = session.overall_score != null ? Math.round(session.overall_score * 100) : null
+                const scoreClr = overallPct == null ? '#94a3b8' : overallPct >= 80 ? '#10b981' : overallPct >= 60 ? '#0ea5e9' : '#f43f5e'
+                const scoreBg = overallPct == null ? 'rgba(148,163,184,0.06)' : overallPct >= 80 ? 'rgba(16,185,129,0.06)' : overallPct >= 60 ? 'rgba(14,165,233,0.06)' : 'rgba(244,63,94,0.06)'
                 return (
                   <div
                     key={session.session_id}
                     onClick={() => navigate(`/result/${session.session_id}`)}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.borderColor = 'rgba(14,165,233,0.3)'
+                      e.currentTarget.style.boxShadow = '0 4px 16px rgba(14,165,233,0.08)'
+                      e.currentTarget.style.transform = 'translateY(-1px)'
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.borderColor = 'rgba(148,163,184,0.2)'
+                      e.currentTarget.style.boxShadow = 'none'
+                      e.currentTarget.style.transform = 'translateY(0)'
+                    }}
                     style={{
-                      borderRadius: '1.25rem', padding: '1.25rem', background: '#fff', border: '1px solid rgba(148,163,184,0.2)',
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer'
+                      borderRadius: '1.25rem', padding: '1.25rem', background: '#fff',
+                      border: '1px solid rgba(148,163,184,0.2)',
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      cursor: 'pointer', transition: 'all 0.2s ease',
                     }}
                   >
                     <div>
-                      <h4 style={{ margin: 0, fontFamily: "'Syne', sans-serif" }}>{session.position}</h4>
+                      <h4 style={{ margin: 0, fontFamily: "'Syne', sans-serif", fontSize: '0.9375rem', color: '#0f172a' }}>{session.position}</h4>
                       <p style={{ margin: '4px 0 0', fontSize: '0.7rem', color: '#64748b' }}>{fmtDate(session.started_at)}</p>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0ea5e9' }}>{overallPct || '--'}</span>
-                      <span style={{ fontSize: '0.6rem', color: '#94a3b8', display: 'block' }}>SCORE</span>
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: '0.75rem'
+                    }}>
+                      <span style={{ fontSize: '0.65rem', color: '#94a3b8', fontFamily: "'JetBrains Mono', monospace" }}>
+                        View report →
+                      </span>
+                      <div style={{
+                        textAlign: 'center', minWidth: 60, padding: '0.5rem 0.875rem',
+                        borderRadius: '0.75rem', background: scoreBg,
+                        border: `1px solid ${scoreClr}33`,
+                      }}>
+                        <span style={{ fontSize: '1.25rem', fontWeight: 800, color: scoreClr, display: 'block', lineHeight: 1 }}>
+                          {overallPct ?? '--'}
+                        </span>
+                        <span style={{ fontSize: '0.55rem', color: '#94a3b8', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.05em' }}>SCORE</span>
+                      </div>
                     </div>
                   </div>
                 )
