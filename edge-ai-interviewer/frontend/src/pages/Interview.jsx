@@ -6,6 +6,7 @@ import WebcamRecorder from '../components/WebcamRecorder'
 import AudioWave from '../components/AudioWave'
 import RealTimeFeedback from '../components/RealTimeFeedback'
 import LoadingScreen from '../components/LoadingScreen'
+import StatusPill from '../components/StatusPill'
 import { startInterview, submitInterview, generateQuestions } from '../services/api'
 
 const DEFAULT_QUESTION = 'Tell me about a time you solved a challenging technical problem.'
@@ -20,6 +21,13 @@ const LEVEL_COLORS = {
 const Interview = () => {
   const navigate = useNavigate()
   const [sessionId, setSessionId] = useState(null)
+  const [setupStep, setSetupStep] = useState(1) // 1: Config, 2: Preview
+  const [customRole, setCustomRole] = useState('')
+  const [useCustomRole, setUseCustomRole] = useState(false)
+
+  const [backendOk, setBackendOk] = useState(null) // null | true | false
+  const [avOk, setAvOk] = useState({ camera: null, mic: null })
+  const [faceModelOk, setFaceModelOk] = useState(null)
 
   // Setup flow
   const [isSetupComplete, setIsSetupComplete] = useState(false)
@@ -37,6 +45,7 @@ const Interview = () => {
   const [mediaStream, setMediaStream] = useState(null)
   const [currentEmotionScore, setCurrentEmotionScore] = useState(0)
   const [currentSpeechScore, setCurrentSpeechScore] = useState(0)
+  const [currentFacialMetrics, setCurrentFacialMetrics] = useState({})
   const emotionScoresRef = useRef([])
   const speechScoresRef = useRef([])
   const mediaRecorderRef = useRef(null)
@@ -52,6 +61,48 @@ const Interview = () => {
     return () => clearInterval(interval)
   }, [isRecording])
 
+  // Backend health ping
+  useEffect(() => {
+    let cancelled = false
+    const ping = async () => {
+      try {
+        const base = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api').replace(/\/$/, '')
+        const res = await fetch(`${base}/health`, { method: 'GET' })
+        if (!cancelled) setBackendOk(res.ok)
+      } catch {
+        if (!cancelled) setBackendOk(false)
+      }
+    }
+    ping()
+    const t = setInterval(ping, 5000)
+    return () => {
+      cancelled = true
+      clearInterval(t)
+    }
+  }, [])
+
+  // Camera/mic availability probe
+  useEffect(() => {
+    let cancelled = false
+    const probe = async () => {
+      try {
+        if (!navigator?.mediaDevices?.getUserMedia) {
+          if (!cancelled) setAvOk({ camera: false, mic: false })
+          return
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+        const videoTrack = stream.getVideoTracks()[0]
+        const audioTrack = stream.getAudioTracks()[0]
+        if (!cancelled) setAvOk({ camera: !!videoTrack, mic: !!audioTrack })
+        stream.getTracks().forEach(t => t.stop())
+      } catch {
+        if (!cancelled) setAvOk({ camera: false, mic: false })
+      }
+    }
+    probe()
+    return () => { cancelled = true }
+  }, [])
+
   // Auto-generate questions when role, level, skills, or numQuestions change
   const [debouncedSkills, setDebouncedSkills] = useState(skills)
   useEffect(() => {
@@ -59,30 +110,13 @@ const Interview = () => {
     return () => clearTimeout(t)
   }, [skills])
 
+  // Remove automatic generation to prevent race conditions and accidental resets during interview
+  /*
   useEffect(() => {
     if (isSetupComplete) return
-    let cancelled = false
-    const run = async () => {
-      setLoading(true)
-      try {
-        const { data } = await generateQuestions({ role, skills: debouncedSkills, level, numQuestions })
-        if (!cancelled && data?.questions?.length > 0) {
-          const cleaned = data.questions.filter(
-            (q) => typeof q === 'string' && q.trim().length > 10
-          )
-          setQuestions(cleaned.length > 0 ? cleaned.slice(0, numQuestions) : [DEFAULT_QUESTION])
-          setCurrentQuestionIndex(0)
-          setQuestionSource(data.source || 'llm')
-        }
-      } catch {
-        if (!cancelled) setQuestionSource('fallback')
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-    if (role && level) run()
-    return () => { cancelled = true }
+    // ...
   }, [role, level, debouncedSkills, numQuestions])
+  */
 
   const fmtTime = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 
@@ -100,6 +134,7 @@ const Interview = () => {
       const recorder = new MediaRecorder(mediaStream)
       chunksRef.current = []
       emotionScoresRef.current = []
+      speechScoresRef.current = []
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
       recorder.onstop = async () => {
         setLoading(true)
@@ -166,49 +201,54 @@ const Interview = () => {
     }
   }
 
+  const effectiveRole = useCustomRole ? customRole : role
+
   const handleSetupSubmit = async (e) => {
     e.preventDefault()
-    if (questions.length === 0 || questions[0] === DEFAULT_QUESTION) {
-      setLoading(true)
-      try {
-        const { data } = await generateQuestions({ role, skills, level, numQuestions })
-        if (data?.questions?.length > 0) {
-          const cleaned = data.questions.filter(
-            (q) => typeof q === 'string' && q.trim().length > 10
-          )
-          setQuestions(cleaned.length > 0 ? cleaned.slice(0, numQuestions) : [DEFAULT_QUESTION])
-          setCurrentQuestionIndex(0)
-          setQuestionSource(data.source || 'llm')
-        }
-      } catch (err) {
-        console.error(err)
-        setQuestionSource('fallback')
-      } finally {
-        setLoading(false)
-      }
-    }
-    setIsSetupComplete(true)
-  }
-
-  const handleRegenerate = async () => {
-    if (isRecording) return
+    if (useCustomRole && !customRole.trim()) return
     setLoading(true)
     try {
-      const { data } = await generateQuestions({ role, skills, level, numQuestions })
-      if (data.questions && data.questions.length > 0) {
+      const { data } = await generateQuestions({
+        role: effectiveRole,
+        skills,
+        level,
+        numQuestions
+      })
+      if (data?.questions?.length > 0) {
         const cleaned = data.questions.filter(
           (q) => typeof q === 'string' && q.trim().length > 10
         )
         setQuestions(cleaned.length > 0 ? cleaned.slice(0, numQuestions) : [DEFAULT_QUESTION])
-        setCurrentQuestionIndex(0)
-        setSessionId(null) // reset session so a fresh one starts
         setQuestionSource(data.source || 'llm')
+      } else {
+        setQuestions([DEFAULT_QUESTION])
+        setQuestionSource(data?.source || 'fallback')
       }
+      setSetupStep(2)
     } catch (err) {
       console.error(err)
+      setQuestions([DEFAULT_QUESTION])
+      setQuestionSource('fallback')
+      setSetupStep(2)
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleStartInterview = () => {
+    setIsSetupComplete(true)
+  }
+
+  const handleBackToConfig = () => {
+    setSetupStep(1)
+  }
+
+  const handleResetSetup = () => {
+    if (isRecording) return
+    setIsSetupComplete(false)
+    setSetupStep(1)
+    setSessionId(null)
+    setCurrentQuestionIndex(0)
   }
 
   const ROLES = [
@@ -222,192 +262,300 @@ const Interview = () => {
     'Product Manager',
     'UI/UX Designer',
     'QA Engineer',
-    'Cyber Security Analyst'
+    'Cyber Security Analyst',
+    'Other (Custom)'
   ]
 
   if (!isSetupComplete) {
     return (
       <div style={{
-        maxWidth: 650,
+        maxWidth: 700,
         margin: '4rem auto',
         padding: '3rem',
-        borderRadius: '1.75rem',
+        borderRadius: '2rem',
         background: 'rgba(255, 255, 255, 0.98)',
         border: '1px solid rgba(148,163,184,0.25)',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.15)',
+        backdropFilter: 'blur(10px)',
+        position: 'relative',
+        overflow: 'hidden'
       }}>
-        <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-          <h2 style={{
-            fontFamily: "'Syne', sans-serif",
-            fontSize: '2.25rem',
-            fontWeight: 800,
-            letterSpacing: '-0.03em',
-            color: '#0ea5e9',
-            marginBottom: '0.75rem'
-          }}>
-            Interview Configuration
-          </h2>
-          <p style={{ color: '#64748b', fontSize: '0.95rem', fontWeight: 450 }}>
-            Configure your session parameters to begin industrial-grade AI assessment.
-          </p>
+        {/* Progress indicator */}
+        <div style={{ display: 'flex', gap: '4px', position: 'absolute', top: 0, left: 0, right: 0, height: '4px' }}>
+          <div style={{ flex: 1, background: setupStep >= 1 ? '#0ea5e9' : '#e2e8f0', transition: 'background 0.3s ease' }} />
+          <div style={{ flex: 1, background: setupStep >= 2 ? '#0ea5e9' : '#e2e8f0', transition: 'background 0.3s ease' }} />
         </div>
 
-        <form onSubmit={handleSetupSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#0ea5e9', marginBottom: '0.625rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Target Professional Role</label>
-            <select
-              value={role}
-              onChange={e => setRole(e.target.value)}
-              required
-              style={{
-                width: '100%',
-                padding: '0.875rem 1.125rem',
-                borderRadius: '0.875rem',
-                border: '1px solid #cbd5e1',
-                outline: 'none',
-                fontSize: '1rem',
-                color: '#1e293b',
-                background: '#fff',
-                cursor: 'pointer',
-                transition: 'border-color 0.2s ease, box-shadow 0.2s ease'
-              }}
-              onFocus={e => {
-                e.target.style.borderColor = '#0ea5e9'
-                e.target.style.boxShadow = '0 0 0 4px rgba(14, 165, 233, 0.15)'
-              }}
-              onBlur={e => {
-                e.target.style.borderColor = '#cbd5e1'
-                e.target.style.boxShadow = 'none'
-              }}
+        <AnimatePresence mode="wait">
+          {setupStep === 1 ? (
+            <motion.div
+              key="step1"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.3 }}
             >
-              <option value="" disabled>Select a role...</option>
-              {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#0ea5e9', marginBottom: '0.625rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Core Competencies</label>
-            <input
-              value={skills}
-              onChange={e => setSkills(e.target.value)}
-              placeholder="e.g. React, Distributed Systems, Python (optional)"
-              style={{
-                width: '100%',
-                padding: '0.875rem 1.125rem',
-                borderRadius: '0.875rem',
-                border: '1px solid #cbd5e1',
-                outline: 'none',
-                fontSize: '1rem',
-                color: '#1e293b'
-              }}
-              onFocus={e => {
-                e.target.style.borderColor = '#0ea5e9'
-                e.target.style.boxShadow = '0 0 0 4px rgba(14, 165, 233, 0.15)'
-              }}
-              onBlur={e => {
-                e.target.style.borderColor = '#cbd5e1'
-                e.target.style.boxShadow = 'none'
-              }}
-            />
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#0ea5e9', marginBottom: '0.625rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Experience Tier</label>
-              <select
-                value={level}
-                onChange={e => setLevel(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.875rem 1.125rem',
-                  borderRadius: '0.875rem',
-                  border: '1px solid #cbd5e1',
-                  outline: 'none',
-                  fontSize: '1rem',
-                  color: '#1e293b',
-                  background: '#fff',
-                  cursor: 'pointer'
-                }}
-              >
-                <option>Entry Level</option>
-                <option>Intermediate</option>
-                <option>Senior</option>
-                <option>Lead / Manager</option>
-              </select>
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#0ea5e9', marginBottom: '0.625rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Question Volume</label>
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                <input
-                  type="number"
-                  min="1"
-                  value={numQuestions}
-                  onChange={e => setNumQuestions(parseInt(e.target.value))}
-                  style={{
-                    width: '100%',
-                    padding: '0.875rem 1.125rem',
-                    borderRadius: '0.875rem',
-                    border: '1px solid #cbd5e1',
-                    outline: 'none',
-                    fontSize: '1rem',
-                    color: '#1e293b'
-                  }}
-                />
-                <span style={{ position: 'absolute', right: '1rem', fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>Standard Set</span>
+              <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+                <h2 style={{
+                  fontFamily: "'Syne', sans-serif",
+                  fontSize: '2.5rem',
+                  fontWeight: 800,
+                  letterSpacing: '-0.04em',
+                  color: '#0f172a',
+                  marginBottom: '0.75rem'
+                }}>
+                  Interview AI
+                </h2>
+                <p style={{ color: '#64748b', fontSize: '1rem' }}>
+                  Step 1: Configure your professional session
+                </p>
               </div>
-            </div>
-          </div>
 
-          {/* AI Generation Notice */}
-          <div style={{
-            padding: '0.75rem 1rem',
-            borderRadius: '0.75rem',
-            background: 'rgba(14,165,233,0.06)',
-            border: '1px solid rgba(14,165,233,0.18)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.625rem'
-          }}>
-            <span style={{ fontSize: '1rem' }}>🤖</span>
-            <p style={{ margin: 0, fontSize: '0.78rem', color: '#475569', lineHeight: 1.5 }}>
-              Questions are <b style={{ color: '#0ea5e9' }}>generated automatically</b> from your role, skills, and experience level.
-              A local LLaMA3 model tailors them; if the AI service is offline, a curated bank is used.
-            </p>
-          </div>
+              <form onSubmit={handleSetupSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#0ea5e9', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Target Role</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      <select
+                        value={useCustomRole ? 'Other (Custom)' : role}
+                        onChange={e => {
+                          if (e.target.value === 'Other (Custom)') {
+                            setUseCustomRole(true)
+                          } else {
+                            setUseCustomRole(false)
+                            setRole(e.target.value)
+                          }
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '1rem 1.25rem',
+                          borderRadius: '1rem',
+                          border: '1px solid #e2e8f0',
+                          fontSize: '1rem',
+                          background: '#f8fafc',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <option value="" disabled>Select a role...</option>
+                        {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                      </select>
 
-          <motion.button
-            whileHover={{ scale: 1.01, translateY: -2 }}
-            whileTap={{ scale: 0.98 }}
-            type="submit"
-            disabled={loading}
-            style={{
-              padding: '1.125rem',
-              borderRadius: '0.875rem',
-              border: 'none',
-              background: 'linear-gradient(135deg, #0ea5e9, #0284c7)',
-              color: '#fff',
-              fontWeight: 700,
-              fontSize: '1.125rem',
-              cursor: 'pointer',
-              marginTop: '0.5rem',
-              boxShadow: '0 10px 15px -3px rgba(14, 165, 233, 0.3), 0 4px 6px -2px rgba(14, 165, 233, 0.05)',
-              transition: 'all 0.2s ease',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.75rem'
-            }}
-          >
-            {loading ? (
-              <>
-                <div className="loading-spinner" style={{ width: 18, height: 18, borderWidth: 2 }} />
-                <span>Generating AI Questions...</span>
-              </>
-            ) : (
-              <span>✦ Generate & Start Interview</span>
-            )}
-          </motion.button>
-        </form>
+                      {useCustomRole && (
+                        <motion.input
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          value={customRole}
+                          onChange={e => setCustomRole(e.target.value)}
+                          placeholder="Enter your specific role title..."
+                          autoFocus
+                          style={{
+                            width: '100%',
+                            padding: '1rem 1.25rem',
+                            borderRadius: '1rem',
+                            border: '1px solid #0ea5e9',
+                            fontSize: '1rem',
+                            boxShadow: '0 0 0 4px rgba(14, 165, 233, 0.1)'
+                          }}
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#0ea5e9', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Key Skills / Tech Stack</label>
+                    <input
+                      value={skills}
+                      onChange={e => setSkills(e.target.value)}
+                      placeholder="e.g. React, Python, Cloud Architecture (comma separated)"
+                      style={{
+                        width: '100%',
+                        padding: '1rem 1.25rem',
+                        borderRadius: '1rem',
+                        border: '1px solid #e2e8f0',
+                        fontSize: '1rem'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#0ea5e9', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Experience Level</label>
+                      <select
+                        value={level}
+                        onChange={e => setLevel(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '1rem 1.25rem',
+                          borderRadius: '1rem',
+                          border: '1px solid #e2e8f0',
+                          fontSize: '1rem',
+                          background: '#fff'
+                        }}
+                      >
+                        <option>Entry Level</option>
+                        <option>Intermediate</option>
+                        <option>Senior</option>
+                        <option>Lead / Manager</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#0ea5e9', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Num Questions: {numQuestions}</label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem' }}>
+                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>1</span>
+                        <input
+                          type="range"
+                          min="1"
+                          max="10"
+                          step="1"
+                          value={numQuestions}
+                          onChange={e => setNumQuestions(parseInt(e.target.value))}
+                          style={{
+                            flex: 1,
+                            accentColor: '#0ea5e9',
+                            cursor: 'pointer'
+                          }}
+                        />
+                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>10</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  type="submit"
+                  disabled={loading}
+                  style={{
+                    padding: '1.25rem',
+                    borderRadius: '1rem',
+                    background: 'linear-gradient(135deg, #0ea5e9, #6366f1)',
+                    color: '#fff',
+                    fontWeight: 800,
+                    fontSize: '1.125rem',
+                    border: 'none',
+                    cursor: 'pointer',
+                    boxShadow: '0 10px 25px -5px rgba(14, 165, 233, 0.4)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '1rem'
+                  }}
+                >
+                  {loading ? (
+                    <>
+                      <div className="loading-spinner" style={{ width: 20, height: 20, borderWidth: 2 }} />
+                      <span>Curating Questions...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Generate My Questions</span>
+                      <span>→</span>
+                    </>
+                  )}
+                </motion.button>
+              </form>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="step2"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                <h2 style={{
+                  fontFamily: "'Syne', sans-serif",
+                  fontSize: '2rem',
+                  fontWeight: 800,
+                  color: '#0f172a',
+                  marginBottom: '0.5rem'
+                }}>
+                  Curated Set Ready
+                </h2>
+                <p style={{ color: '#64748b' }}>
+                  Review your AI-generated questions before entering the room
+                </p>
+              </div>
+
+              <div style={{
+                background: '#f8fafc',
+                borderRadius: '1.5rem',
+                padding: '1.5rem',
+                maxHeight: '400px',
+                overflowY: 'auto',
+                border: '1px solid #e2e8f0',
+                marginBottom: '2rem'
+              }}>
+                {questions.map((q, i) => (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.1 }}
+                    key={i}
+                    style={{
+                      padding: '1rem',
+                      background: '#fff',
+                      borderRadius: '1rem',
+                      marginBottom: '0.75rem',
+                      border: '1px solid #e2e8f0',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                      display: 'flex',
+                      gap: '1rem'
+                    }}
+                  >
+                    <span style={{
+                      fontWeight: 800,
+                      color: '#0ea5e9',
+                      fontSize: '0.9rem',
+                      fontFamily: "'Space Mono', monospace"
+                    }}>
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                    <p style={{ fontSize: '0.95rem', color: '#334155' }}>{q}</p>
+                  </motion.div>
+                ))}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem' }}>
+                <button
+                  onClick={handleBackToConfig}
+                  style={{
+                    padding: '1.125rem',
+                    borderRadius: '1rem',
+                    background: '#f1f5f9',
+                    color: '#475569',
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ← Adjust
+                </button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleStartInterview}
+                  style={{
+                    padding: '1.125rem',
+                    borderRadius: '1rem',
+                    background: '#0ea5e9',
+                    color: '#fff',
+                    fontWeight: 800,
+                    fontSize: '1.1rem',
+                    border: 'none',
+                    cursor: 'pointer',
+                    boxShadow: '0 8px 16px rgba(14, 165, 233, 0.3)'
+                  }}
+                >
+                  Enter Interview Room ✦
+                </motion.button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     )
   }
@@ -440,7 +588,7 @@ const Interview = () => {
                 letterSpacing: '-0.04em',
                 color: '#0f172a',
                 margin: 0,
-              }}>Interview Room</h1>
+              }}>{effectiveRole} Assessment</h1>
 
               {/* Difficulty chip */}
               {(() => {
@@ -478,19 +626,19 @@ const Interview = () => {
 
           {/* Right side: Regenerate + Status */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-            {/* Regenerate button */}
+            {/* Configuration / Exit button */}
             {!isRecording && (
               <motion.button
                 whileHover={{ scale: 1.04 }}
                 whileTap={{ scale: 0.96 }}
-                onClick={handleRegenerate}
+                onClick={handleResetSetup}
                 disabled={loading}
                 style={{
                   padding: '0.45rem 1rem',
                   borderRadius: '99px',
-                  border: '1px solid rgba(139,92,246,0.35)',
-                  background: 'rgba(139,92,246,0.06)',
-                  color: '#8b5cf6',
+                  border: '1px solid rgba(148,163,184,0.35)',
+                  background: 'rgba(255,255,255,0.9)',
+                  color: '#64748b',
                   fontSize: '0.72rem',
                   fontWeight: 700,
                   fontFamily: "'DM Sans', sans-serif",
@@ -502,7 +650,7 @@ const Interview = () => {
                   opacity: loading ? 0.5 : 1,
                 }}
               >
-                {loading ? '⟳ Generating...' : '⟳ Regenerate Questions'}
+                {loading ? '⟳ Loading...' : '⚙ Configuration'}
               </motion.button>
             )}
 
@@ -537,6 +685,43 @@ const Interview = () => {
         </div>
       </motion.div>
 
+      {/* Live status bar */}
+      <div style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '0.5rem',
+        marginTop: '0.9rem',
+      }}>
+        <StatusPill
+          label="backend"
+          value={backendOk === null ? 'checking' : backendOk ? 'online' : 'offline'}
+          variant={backendOk === null ? 'info' : backendOk ? 'ok' : 'err'}
+          pulse={backendOk === true}
+        />
+        <StatusPill
+          label="camera"
+          value={avOk.camera === null ? 'checking' : avOk.camera ? 'ready' : 'blocked'}
+          variant={avOk.camera === null ? 'info' : avOk.camera ? 'ok' : 'err'}
+        />
+        <StatusPill
+          label="mic"
+          value={avOk.mic === null ? 'checking' : avOk.mic ? 'ready' : 'blocked'}
+          variant={avOk.mic === null ? 'info' : avOk.mic ? 'ok' : 'err'}
+        />
+        <StatusPill
+          label="face model"
+          value={faceModelOk === null ? 'loading' : faceModelOk ? 'loaded' : 'error'}
+          variant={faceModelOk === null ? 'info' : faceModelOk ? 'ok' : 'err'}
+          pulse={faceModelOk === true && isRecording}
+        />
+        <StatusPill
+          label="scoring"
+          value={isRecording ? 'live' : 'paused'}
+          variant={isRecording ? 'ok' : 'warn'}
+          pulse={isRecording}
+        />
+      </div>
+
       {/* Main grid */}
       <div style={{
         display: 'grid',
@@ -567,7 +752,10 @@ const Interview = () => {
               animate={{ opacity: 1, y: 0 }}
               style={{ marginTop: '1.25rem' }}
             >
-              <RealTimeFeedback scores={{ facial: currentEmotionScore, speech: currentSpeechScore }} />
+              <RealTimeFeedback
+                scores={{ facial: currentEmotionScore, speech: currentSpeechScore }}
+                facialMetrics={currentFacialMetrics}
+              />
             </motion.div>
           )}
         </motion.div>
@@ -583,13 +771,19 @@ const Interview = () => {
             isRecording={isRecording}
             mediaStream={mediaStream}
             setMediaStream={setMediaStream}
-            onEmotionScore={(score) => {
-              setCurrentEmotionScore(score)
+            onModelStatus={(ok) => setFaceModelOk(ok)}
+            onEmotionScore={(data) => {
+              // data is { score, eyeContact, posture, smile }
+              setCurrentEmotionScore(data.score)
               if (isRecording) {
-                emotionScoresRef.current.push(score)
+                emotionScoresRef.current.push(data.score)
               }
+              // We can pass the whole data object to RealTimeFeedback
+              // by setting a state
+              setCurrentFacialMetrics(data)
             }}
           />
+
           <AudioWave
             mediaStream={mediaStream}
             isRecording={isRecording}

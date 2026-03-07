@@ -13,9 +13,14 @@ def save_uploaded_audio(file_storage, dest_dir: str) -> str:
     # Ensure wav format for downstream processing
     if not path.suffix.lower() == ".wav":
         wav_path = dest / (path.stem + "_converted.wav")
-        import subprocess, shlex
-        cmd = f"ffmpeg -y -i {shlex.quote(str(path))} -ar 16000 -ac 1 {shlex.quote(str(wav_path))}"
-        subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        return str(wav_path)
+        import subprocess
+        cmd = ["ffmpeg", "-y", "-i", str(path), "-ar", "16000", "-ac", "1", str(wav_path)]
+        try:
+            subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception as e:
+            pass # ffmpeg not found or failed, let it fall through
+            
+        if wav_path.exists():
+            return str(wav_path)
     return str(path)
 

@@ -43,8 +43,27 @@ const InterviewCard = ({ question, onStart, onStop, isRecording, timer, onNextQu
         transition: 'background 0.4s ease',
       }} />
 
+      {/* Question progress bar */}
+      <div style={{
+        position: 'absolute',
+        top: 0, left: 0, right: 0,
+        height: '4px',
+        background: '#f1f5f9',
+        display: 'flex'
+      }}>
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${((currentIdx + 1) / totalQuestions) * 100}%` }}
+          style={{
+            height: '100%',
+            background: 'linear-gradient(90deg, #0ea5e9, #6366f1)',
+            boxShadow: '0 0 10px rgba(14, 165, 233, 0.4)'
+          }}
+        />
+      </div>
+
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', marginTop: '4px' }}>
         <div>
           <p style={{
             fontFamily: "'JetBrains Mono', monospace",
@@ -54,13 +73,37 @@ const InterviewCard = ({ question, onStart, onStop, isRecording, timer, onNextQu
             color: '#0ea5e9',
             marginBottom: '0.3rem',
           }}>Current Question {totalQuestions > 1 ? `(${currentIdx + 1} of ${totalQuestions})` : ''}</p>
-          <h2 style={{
-            fontFamily: "'Syne', sans-serif",
-            fontWeight: 700,
-            fontSize: '1.125rem',
-            letterSpacing: '-0.03em',
-            color: '#0f172a',
-          }}>Interview Prompt</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <h2 style={{
+              fontFamily: "'Syne', sans-serif",
+              fontWeight: 700,
+              fontSize: '1.125rem',
+              letterSpacing: '-0.03em',
+              color: '#0f172a',
+            }}>Interview Prompt</h2>
+            {totalQuestions > 1 && !isRecording && (
+              <motion.button
+                whileHover={{ scale: 1.05, background: '#f8fafc' }}
+                whileTap={{ scale: 0.95 }}
+                onClick={onNextQuestion}
+                style={{
+                  padding: '0.2rem 0.6rem',
+                  borderRadius: '99px',
+                  border: '1px solid #e2e8f0',
+                  background: '#fff',
+                  fontSize: '0.65rem',
+                  fontWeight: 600,
+                  color: '#64748b',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem'
+                }}
+              >
+                Skip <span>→</span>
+              </motion.button>
+            )}
+          </div>
         </div>
 
         {/* Live badge */}

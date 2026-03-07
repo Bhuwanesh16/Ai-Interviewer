@@ -2,56 +2,68 @@ import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ScoreCard from './ScoreCard'
 
-const RealTimeFeedback = ({ scores }) => {
+const RealTimeFeedback = ({ scores, facialMetrics }) => {
   // scores: { facial: 0-1, speech: 0-1 }
   const [suggestion, setSuggestion] = useState(null)
 
   // Logic to generate real-time suggestions
   useEffect(() => {
     const { facial, speech } = scores
+    const { eyeContact, posture, smile } = facialMetrics || {}
 
-    let newSuggestion = null
+    // Throttle suggestion updates to avoid flickering
+    const suggestionTimer = setTimeout(() => {
+      let newSuggestion = null
 
-    if (facial < 0.25) {
-      newSuggestion = {
-        text: "Low facial engagement detected. Try to exhibit more enthusiasm and natural expressions.",
-        type: "improvement",
-        icon: "🎭"
+      if (speech < 0.05 && speech > 0) {
+        newSuggestion = {
+          text: "Voice signal is very weak. Ensure your microphone is positioned correctly and speak up.",
+          type: "warning",
+          icon: "🎤"
+        }
+      } else if (eyeContact < 0.4 && facial > 0.1) {
+        newSuggestion = {
+          text: "Try to maintain steady eye contact with the camera to build professional rapport.",
+          type: "improvement",
+          icon: "👁️"
+        }
+      } else if (posture < 0.5 && facial > 0.1) {
+        newSuggestion = {
+          text: "Head movement detected. Try to keep a stable, forward-facing posture for a professional look.",
+          type: "improvement",
+          icon: "🧘"
+        }
+      } else if (facial < 0.2) {
+        newSuggestion = {
+          text: "Low facial engagement. Try to project more energy and use natural expressions.",
+          type: "improvement",
+          icon: "🎭"
+        }
+      } else if (speech > 0.85) {
+        newSuggestion = {
+          text: "Audio levels are peaking. Consider moving slightly away from the mic.",
+          type: "neutral",
+          icon: "🔊"
+        }
+      } else if (eyeContact > 0.75 && posture > 0.75 && facial > 0.5) {
+        newSuggestion = {
+          text: "Excellent posture and eye contact! You look confident and engaged.",
+          type: "success",
+          icon: "⭐"
+        }
+      } else {
+        newSuggestion = {
+          text: "Good steady delivery. Focus on your pace and explaining the 'Result' of your stories.",
+          type: "neutral",
+          icon: "⏱️"
+        }
       }
-    } else if (speech < 0.05) {
-      newSuggestion = {
-        text: "Voice signal is very weak. Ensure your microphone is positioned correctly and speak up.",
-        type: "warning",
-        icon: "🎤"
-      }
-    } else if (speech > 0.85) {
-      newSuggestion = {
-        text: "Audio levels are peaking. Consider moving slightly away from the mic for better clarity.",
-        type: "neutral",
-        icon: "🔊"
-      }
-    } else if (facial > 0.6 && speech > 0.2) {
-      newSuggestion = {
-        text: "Excellent presence! Your energy levels and engagement are currently optimal.",
-        type: "success",
-        icon: "⭐"
-      }
-    } else if (facial < 0.45) {
-      newSuggestion = {
-        text: "Consider maintaining a more consistent smile to appear more approachable.",
-        type: "improvement",
-        icon: "😊"
-      }
-    } else {
-      newSuggestion = {
-        text: "Good steady delivery. Focus on your pace and maintaining eye contact.",
-        type: "neutral",
-        icon: "⏱️"
-      }
-    }
 
-    setSuggestion(newSuggestion)
-  }, [scores])
+      setSuggestion(newSuggestion)
+    }, 1000)
+
+    return () => clearTimeout(suggestionTimer)
+  }, [scores, facialMetrics])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

@@ -77,12 +77,15 @@ class SpeechAnalysisService:
             cv_rms = std_rms / (mean_rms + 1e-6)
             energy_score = 1.0 - min(abs(cv_rms - 0.7) / 0.7, 1.0)
             
-            # Final Blend (Pace 30%, Clarity 30%, Prosody 20%, Stability 20%)
-            final_score = (rate_score * 0.3) + (clarity_score * 0.3) + (pitch_score * 0.2) + (energy_score * 0.2)
+            # Final Blend (Pace 25%, Clarity 25%, Prosody 25%, Energy Stability 25%)
+            final_score = (rate_score * 0.25) + (clarity_score * 0.25) + (pitch_score * 0.25) + (energy_score * 0.25)
             final_score = max(0.1, min(final_score, 1.0))
             
-            # Boost for UX (Real-world audio is often imperfect)
-            final_score = final_score * 0.4 + 0.5 if clarity_score > 0.4 else final_score
+            # Professional classification
+            is_energetic = mean_rms > 0.05  # RMS energy threshold for "loud enough"
+            is_stable = cv_rms < 0.8
+            
+            state = "Confident" if (pitch_score > 0.4 and is_stable and is_energetic) else "Nervous" if (cv_rms > 1.2 or pitch_score < 0.2) else "Steady"
             
             return {
                 "speech_score": round(float(final_score), 2),
@@ -90,9 +93,11 @@ class SpeechAnalysisService:
                 "snr_db": round(float(snr), 1),
                 "pitch_variance": round(pitch_score, 2),
                 "metrics": {
-                    "clarity": "Excellent" if snr > 25 else "Moderate" if snr > 15 else "Low Quality",
-                    "pace": "Fast" if rate_per_sec > 4.5 else "Slow" if rate_per_sec < 1.5 else "Optimal",
-                    "prosody": "Dynamic" if pitch_score > 0.6 else "Balanced" if pitch_score > 0.3 else "Monotone"
+                    "clarity": "Excellent" if snr > 25 else "Professional" if snr > 18 else "Check Mic",
+                    "pace": "Fluid" if 2.2 <= rate_per_sec <= 3.8 else "Fast" if rate_per_sec > 3.8 else "Slow",
+                    "prosody": "Engaging" if pitch_score > 0.6 else "Balanced" if pitch_score > 0.3 else "Monotone",
+                    "confidence": state,
+                    "volume_stability": "Consistent" if cv_rms < 0.6 else "Moderate" if cv_rms < 1.0 else "Fluctuating"
                 }
             }
             

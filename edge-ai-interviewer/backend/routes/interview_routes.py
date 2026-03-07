@@ -5,6 +5,7 @@ from flask import Blueprint, request, jsonify
 from extensions import db
 from models.session_model import InterviewSession
 from models.response_model import Response
+from utils.auth_decorator import token_required
 from routes.auth_routes import verify_token
 from services.facial_service import facial_service
 from services.speech_service import speech_service
@@ -28,21 +29,11 @@ def _get_user_id_from_header():
 
 
 @interview_bp.post("/generate_questions")
-def generate_questions_route():
+@token_required
+def generate_questions_route(user_id):
     """Generate tailored interview questions using the LLM question service.
-
-    The frontend sends:
-      { role, skills, level, numQuestions }
-
-    We delegate to question_service.generate_questions() which calls the local
-    Ollama/LLaMA3 model and returns a parsed list of question strings.  If
-    Ollama is unreachable the service transparently falls back to a curated
-    role/level-aware static bank, so this endpoint never fails the caller.
+    ...
     """
-    user_id = _get_user_id_from_header()
-    if not user_id:
-        return jsonify({"message": "Unauthorized"}), 401
-
     payload = request.get_json() or {}
     role = payload.get("role", "Software Engineer").strip()
     skills = payload.get("skills", "").strip()
@@ -64,17 +55,36 @@ def generate_questions_route():
     return jsonify({"questions": questions, "source": "llm"}), 200
 
 
-@interview_bp.post("/start")
-def start_interview():
-    user_id = _get_user_id_from_header()
-    if not user_id:
-        return jsonify({"message": "Unauthorized"}), 401
+@interview_bp.post("/generate_followup")
+@token_required
+def generate_followup_route(user_id):
+    """Generate a context-aware follow-up question."""
+    payload = request.get_json() or {}
+    role = payload.get("role", "Software Engineer").strip()
+    level = payload.get("level", "Intermediate").strip()
+    previous_q = payload.get("question", "").strip()
+    answer = payload.get("transcript", "").strip()
 
+    from services.question_service import generate_followup
+    followup = generate_followup(role, level, previous_q, answer)
+
+    return jsonify({"followup": followup}), 200
+
+
+@interview_bp.post("/start")
+@token_required
+def start_interview(user_id):
     payload = request.get_json() or {}
     position = payload.get("position", "Software Engineer")
     level = payload.get("experience_level", "Intermediate")
+    skills = payload.get("skills", "")
 
-    session = InterviewSession(user_id=user_id, position=position, experience_level=level)
+    session = InterviewSession(
+        user_id=user_id, 
+        position=position, 
+        experience_level=level,
+        skills=skills
+    )
     db.session.add(session)
     db.session.commit()
 
@@ -92,18 +102,15 @@ def start_interview():
 
 
 @interview_bp.post("/submit")
-def submit_interview():
-    user_id = _get_user_id_from_header()
-    if not user_id:
-        return jsonify({"message": "Unauthorized"}), 401
-
+@token_required
+def submit_interview(user_id):
     session_id = request.form.get("session_id")
     question = request.form.get("question", "Tell me about yourself.")
 
     if not session_id:
         return jsonify({"message": "Missing session_id"}), 400
 
-    session = InterviewSession.query.get(session_id)
+    session = db.session.get(InterviewSession, session_id)  # Updated for SQLAlchemy 2.x compatibility
     if not session:
         return jsonify({"message": "Session not found"}), 404
 
@@ -116,17 +123,27 @@ def submit_interview():
     video_path = save_uploaded_video(video_file, "uploads/videos")
     audio_path = save_uploaded_audio(audio_file, "uploads/audios")
 
-    # Run ML pipeline (stubbed for speech/nlp, real for edge facial)
     edge_facial_str = request.form.get("edge_facial_score")
-    if edge_facial_str:
+    if edge_facial_str and float(edge_facial_str) > 0:
         facial_score = float(edge_facial_str)
+        facial_result = {"facial_score": facial_score, "metrics": {}}
     else:
+        # Fall back to Python backend if browser-side tracking failed or scored 0
         facial_result = facial_service.analyze_video(video_path)
         facial_score = facial_result["facial_score"]
 
+    # Apply professional floor to all facial scores (ensures 1/100 becomes 10/100)
+    facial_score = max(0.1, min(float(facial_score), 1.0))
+
     speech_result = speech_service.analyze_audio(audio_path)
     transcript_result = transcription_service.transcribe(audio_path)
-    nlp_result = nlp_service.score_relevance(question, transcript_result["transcript"])
+    
+    # Pass skills for tech-stack verification
+    nlp_result = nlp_service.score_relevance(
+        question, 
+        transcript_result["transcript"], 
+        skills=session.skills if hasattr(session, 'skills') else ""
+    )
 
     scores = scoring_service.compute_final_score(
         facial_score,
@@ -161,7 +178,8 @@ def submit_interview():
         nlp_details=nlp_result,
         role=session.position,
         level=session.experience_level,
-        question=question
+        question=question,
+        facial_details=facial_result
     )
 
     return (
@@ -187,21 +205,12 @@ def submit_interview():
 
 
 @interview_bp.post("/analyze")
-def analyze_chunk():
+@token_required
+def analyze_chunk(user_id):
     """Analyze a short audio/video chunk and return intermediate scores.
-
-    This endpoint is intended for real-time feedback while the user is
-    recording.  The frontend will POST one-second blobs as they are
-    produced by the MediaRecorder.  The implementation reuses the same
-    facial/speech services as the full submission, but does not store any
-    data server-side (aside from the temporary file used for inference).
+    ...
     """
-    user_id = _get_user_id_from_header()
-    if not user_id:
-        return jsonify({"message": "Unauthorized"}), 401
-
-    # session_id is optional here; we only need it so that the client can
-    # create the session up front and we can verify it if provided.
+    # session_id is optional here
     session_id = request.form.get("session_id")
     if session_id:
         session = InterviewSession.query.get(session_id)
@@ -227,13 +236,10 @@ def analyze_chunk():
 
 
 @interview_bp.get("/history")
-def get_history():
+@token_required
+def get_history(user_id):
     """Return all completed interview sessions for the current user,
     sorted by most recent first, including per-session scores and feedback."""
-    user_id = _get_user_id_from_header()
-    if not user_id:
-        return jsonify({"message": "Unauthorized"}), 401
-
     sessions = (
         InterviewSession.query
         .filter_by(user_id=user_id)

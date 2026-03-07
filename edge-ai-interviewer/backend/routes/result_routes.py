@@ -2,17 +2,18 @@ from flask import Blueprint, jsonify, request
 
 from models.session_model import InterviewSession
 from services.report_service import report_service
-from routes.auth_routes import verify_token
-
-result_bp = Blueprint("results", __name__)
-
+# Removed top-level import of verify_token to avoid circular dependency.
+# verify_token is now imported inside the _get_user_id function to resolve the issue.
 
 def _get_user_id():
+    from routes.auth_routes import verify_token  # Moved here to avoid circular import
     auth = request.headers.get("Authorization", "")
     if not auth.startswith("Bearer "):
         return None
     return verify_token(auth.split(" ", 1)[1])
 
+
+result_bp = Blueprint('result', __name__)
 
 @result_bp.get("/result/<string:session_id>")
 def get_result(session_id):

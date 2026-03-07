@@ -5,7 +5,8 @@ import RadarChart from '../components/RadarChart'
 import { fetchResult } from '../services/api'
 
 const ScoreMeter = ({ label, score, color, glow, delay = 0 }) => {
-  const pct = Math.round((score || 0) * 100)
+  // if score is null/undefined we treat it as disabled (e.g. transcription failure)
+  const pct = score != null ? Math.round(score * 100) : null
   return (
     <motion.div
       initial={{ opacity: 0, x: -12 }}
@@ -34,12 +35,20 @@ const ScoreMeter = ({ label, score, color, glow, delay = 0 }) => {
           fontWeight: 700,
           color,
           textShadow: `0 0 16px ${glow}`,
-        }}>{pct}<span style={{ fontSize: '0.65rem', color: '#334155', fontFamily: "'JetBrains Mono', monospace" }}>/100</span></span>
+        }}>
+          {pct != null ? (
+            <>
+              {pct}<span style={{ fontSize: '0.65rem', color: '#334155', fontFamily: "'JetBrains Mono', monospace" }}>/100</span>
+            </>
+          ) : (
+            <span style={{ color: '#94a3b8', fontSize: '0.875rem' }}>N/A</span>
+          )}
+        </span>
       </div>
       <div style={{ height: 4, borderRadius: 99, background: 'rgba(56,189,248,0.05)', overflow: 'hidden' }}>
         <motion.div
           initial={{ width: 0 }}
-          animate={{ width: `${pct}%` }}
+          animate={{ width: pct != null ? `${pct}%` : '0%' }}
           transition={{ delay: delay + 0.2, duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
           style={{
             height: '100%',
@@ -76,6 +85,8 @@ const Result = () => {
   const [sessionSummary, setSessionSummary] = useState(null)
   const [selectedQuestionIdx, setSelectedQuestionIdx] = useState(0)
 
+  const isTranscriptUnavailable = typeof transcript === 'string' && transcript.toLowerCase().includes('transcription unavailable')
+
   useEffect(() => {
     if (!sessionId) return
     const load = async () => {
@@ -94,16 +105,23 @@ const Result = () => {
         }
 
         if (responses.length > 0) {
-          // Compute averaged scores for the RADAR/METERS (overall performance)
+          // Compute averaged scores for the RADAR/METERS (overall performance).
+          // Treat `null`/`undefined` as missing so we don't skew the chart when one
+          // or more signals are absent (e.g. no transcript).  If *all* values for a
+          // given key are missing we return null instead of 0 so the meter can
+          // display "N/A".
           const avg = (key) => {
-            const vals = responses.map(r => r[key] || 0)
+            const vals = responses
+              .map(r => r[key])
+              .filter(v => v != null)
+            if (vals.length === 0) return null
             return vals.reduce((a, b) => a + b, 0) / vals.length
           }
           setScores({
             facial: avg('facial_score'),
             speech: avg('speech_score'),
             nlp: avg('nlp_score'),
-            final: data.overall_score || avg('final_score'),
+            final: data.overall_score != null ? data.overall_score : avg('final_score') || 0,
           })
 
           // Initial selection
@@ -236,7 +254,7 @@ const Result = () => {
           </p>
           {sessionOverallScore != null && allResponses.length > 1 && (
             <p style={{ fontSize: '0.6rem', color: '#94a3b8', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em', marginTop: '0.25rem' }}>
-              AVG OF {allResponses.length} QUESTIONS
+              AVERAGE OF {allResponses.length} QUESTIONS
             </p>
           )}
         </motion.div>
@@ -251,7 +269,51 @@ const Result = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           <ScoreMeter label="Emotion signal" score={scores.facial} color="#10b981" glow="rgba(16,185,129,0.4)" delay={0.1} />
           <ScoreMeter label="Speech clarity" score={scores.speech} color="#0ea5e9" glow="rgba(14,165,233,0.4)" delay={0.2} />
-          <ScoreMeter label="Content relevance" score={scores.nlp} color="#8b5cf6" glow="rgba(139,92,246,0.4)" delay={0.3} />
+          <ScoreMeter label="Content relevance" score={isTranscriptUnavailable ? null : scores.nlp} color="#8b5cf6" glow="rgba(139,92,246,0.4)" delay={0.3} />
+
+          {isTranscriptUnavailable && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35, duration: 0.4 }}
+              style={{
+                borderRadius: '1rem',
+                border: '1px solid rgba(245,158,11,0.25)',
+                background: 'rgba(245,158,11,0.06)',
+                padding: '0.9rem 1rem',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+              }}
+            >
+              <p style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: '0.6rem',
+                letterSpacing: '0.14em',
+                textTransform: 'uppercase',
+                color: '#d97706',
+                marginBottom: '0.4rem',
+                fontWeight: 700,
+              }}>
+                Content analysis disabled
+              </p>
+              <p style={{
+                fontSize: '0.8rem',
+                color: '#475569',
+                lineHeight: 1.6,
+                margin: 0,
+              }}>
+                Transcription is unavailable, so content relevance cannot be scored. Enable Whisper in the backend environment and retry.
+              </p>
+              <p style={{
+                marginTop: '0.6rem',
+                fontSize: '0.75rem',
+                color: '#0f172a',
+                fontFamily: "'JetBrains Mono', monospace",
+                whiteSpace: 'pre-wrap',
+              }}>
+                {'pip install openai-whisper\n(Recommended: restart backend after install)'}
+              </p>
+            </motion.div>
+          )}
         </div>
 
         <motion.div
@@ -430,13 +492,13 @@ const Result = () => {
           {/* Metrics grid — only renders cells with real data */}
           {(() => {
             const wc = metrics.word_count
-            const fillerPct = metrics.filler_word_frequency
-            const fillerHits = metrics.filler_count
             const pace = metrics.speaking_rate
             const clarity = metrics.clarity_rating
             const validity = metrics.content_validity
+            const ec = metrics.eye_contact
+            const bl = metrics.body_language
+            const conf = metrics.confidence_level
 
-            // Only include a metric if its value is a real, non-placeholder datum
             const cells = []
 
             if (wc !== undefined && wc !== null) {
@@ -445,26 +507,32 @@ const Result = () => {
                 <div key="wc" style={{ textAlign: 'center' }}>
                   <p style={{ fontSize: '0.5rem', color: '#64748b', marginBottom: '0.3rem', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em', textTransform: 'uppercase' }}>Words</p>
                   <p style={{ fontSize: '1.1rem', fontWeight: 800, color: wclr, margin: 0 }}>{wc}</p>
-                  <p style={{ fontSize: '0.5rem', color: '#94a3b8', marginTop: '0.2rem' }}>
-                    {wc < 25 ? 'Too brief' : wc < 50 ? 'Concise' : wc < 100 ? 'Good depth' : 'Detailed'}
-                  </p>
                 </div>
               )
             }
 
-            if (fillerHits !== undefined && fillerHits !== null && fillerPct !== undefined) {
-              const fclr = fillerHits === 0 ? '#10b981' : fillerHits <= 3 ? '#f59e0b' : '#f43f5e'
+            if (ec && ec !== 'N/A') {
+              const eclr = ec === 'High' ? '#10b981' : ec === 'Good' ? '#0ea5e9' : '#f59e0b'
               cells.push(
-                <div key="filler" style={{ textAlign: 'center' }}>
-                  <p style={{ fontSize: '0.5rem', color: '#64748b', marginBottom: '0.3rem', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em', textTransform: 'uppercase' }}>Filler %</p>
-                  <p style={{ fontSize: '1.1rem', fontWeight: 800, color: fclr, margin: 0 }}>{fillerPct}</p>
-                  <p style={{ fontSize: '0.5rem', color: '#94a3b8', marginTop: '0.2rem' }}>({fillerHits} hits)</p>
+                <div key="ec" style={{ textAlign: 'center' }}>
+                  <p style={{ fontSize: '0.5rem', color: '#64748b', marginBottom: '0.3rem', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em', textTransform: 'uppercase' }}>Eye Contact</p>
+                  <p style={{ fontSize: '0.85rem', fontWeight: 800, color: eclr, margin: 0 }}>{ec}</p>
+                </div>
+              )
+            }
+
+            if (conf && conf !== 'N/A') {
+              const cclr = conf === 'Confident' ? '#10b981' : conf === 'Steady' ? '#0ea5e9' : '#f59e0b'
+              cells.push(
+                <div key="conf" style={{ textAlign: 'center' }}>
+                  <p style={{ fontSize: '0.5rem', color: '#64748b', marginBottom: '0.3rem', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em', textTransform: 'uppercase' }}>Confidence</p>
+                  <p style={{ fontSize: '0.85rem', fontWeight: 800, color: cclr, margin: 0 }}>{conf}</p>
                 </div>
               )
             }
 
             if (pace && pace !== 'Unknown') {
-              const pclr = pace === 'Optimal' ? '#10b981' : pace === 'Moderate' ? '#0ea5e9' : '#f59e0b'
+              const pclr = pace === 'Optimal' || pace === 'Fluid' ? '#10b981' : pace === 'Moderate' ? '#0ea5e9' : '#f59e0b'
               cells.push(
                 <div key="pace" style={{ textAlign: 'center' }}>
                   <p style={{ fontSize: '0.5rem', color: '#64748b', marginBottom: '0.3rem', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em', textTransform: 'uppercase' }}>Pace</p>
@@ -474,7 +542,7 @@ const Result = () => {
             }
 
             if (clarity && clarity !== 'Unknown') {
-              const cclr = clarity === 'High' ? '#10b981' : clarity === 'Moderate' ? '#0ea5e9' : '#f43f5e'
+              const cclr = clarity === 'High' || clarity === 'Excellent' ? '#10b981' : clarity === 'Moderate' || clarity === 'Professional' ? '#0ea5e9' : '#f43f5e'
               cells.push(
                 <div key="clarity" style={{ textAlign: 'center' }}>
                   <p style={{ fontSize: '0.5rem', color: '#64748b', marginBottom: '0.3rem', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em', textTransform: 'uppercase' }}>Clarity</p>
@@ -488,7 +556,7 @@ const Result = () => {
               cells.push(
                 <div key="validity" style={{ textAlign: 'center' }}>
                   <p style={{ fontSize: '0.5rem', color: '#64748b', marginBottom: '0.3rem', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.1em', textTransform: 'uppercase' }}>Validity</p>
-                  <p style={{ fontSize: '0.8rem', fontWeight: 800, color: vclr, margin: 0 }}>{validity}</p>
+                  <p style={{ fontSize: '0.85rem', fontWeight: 800, color: vclr, margin: 0 }}>{validity}</p>
                 </div>
               )
             }
@@ -498,8 +566,8 @@ const Result = () => {
             return (
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: `repeat(${cells.length}, 1fr)`,
-                gap: '0.75rem',
+                gridTemplateColumns: `repeat(auto-fit, minmax(80px, 1fr))`,
+                gap: '1rem',
                 paddingTop: '1rem',
                 borderTop: '1px solid rgba(148,163,184,0.15)',
               }}>

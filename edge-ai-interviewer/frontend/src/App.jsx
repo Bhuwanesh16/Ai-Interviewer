@@ -4,6 +4,7 @@ import Register from './pages/Register'
 import Interview from './pages/Interview'
 import Result from './pages/Result'
 import Navbar from './components/Navbar'
+import ErrorBoundary from './components/ErrorBoundary'
 
 function App() {
   return (
@@ -17,12 +18,14 @@ function App() {
       }}>
         <Navbar />
         <main style={{ flex: 1 }}>
-          <Routes>
-            <Route path="/"                    element={<Home />} />
-            <Route path="/register"            element={<Register />} />
-            <Route path="/interview"           element={<Interview />} />
-            <Route path="/result/:sessionId"   element={<Result />} />
-          </Routes>
+          <ErrorBoundary>
+            <Routes>
+              <Route path="/"                    element={<Home />} />
+              <Route path="/register"            element={<Register />} />
+              <Route path="/interview"           element={<Interview />} />
+              <Route path="/result/:sessionId"   element={<Result />} />
+            </Routes>
+          </ErrorBoundary>
         </main>
 
         {/* Footer */}

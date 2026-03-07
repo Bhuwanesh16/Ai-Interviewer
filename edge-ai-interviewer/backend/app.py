@@ -1,7 +1,13 @@
 import os
-from flask import Flask, request
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+
 from config import get_config
 from extensions import init_extensions, db
+from utils.logger import setup_logging
+from utils.error_handlers import register_error_handlers
+
+from services.transcription_service import transcription_service
 
 
 def create_app():
@@ -10,8 +16,14 @@ def create_app():
     # Load configuration
     app.config.from_object(get_config())
 
+    # Initialize logging
+    setup_logging(app)
+
     # Initialize extensions (DB, Migrate, CORS)
     init_extensions(app)
+    
+    # Register error handlers
+    register_error_handlers(app)
 
     # Import models (so migrations detect them)
     from models.user_model import User  # noqa: F401
@@ -30,7 +42,14 @@ def create_app():
     # Health Check Route
     @app.get("/api/health")
     def health_check():
-        return {"status": "ok"}, 200
+        return jsonify({"status": "ok"})
+
+    @app.get("/api/asr_status")
+    def asr_status():
+        try:
+            return jsonify({"status": "ok", "asr": transcription_service.status()}), 200
+        except Exception as exc:
+            return jsonify({"status": "error", "message": str(exc)}), 200
 
     # Ensure CORS headers on every response (including 5xx) so browser doesn't hide real errors
     @app.after_request
@@ -46,6 +65,12 @@ def create_app():
         response.headers["Access-Control-Allow-Credentials"] = "true"
         response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        
+        # Add Security Headers
+        security_headers = app.config.get("SECURITY_HEADERS", {})
+        for header, value in security_headers.items():
+            response.headers[header] = value
+            
         return response
 
     return app

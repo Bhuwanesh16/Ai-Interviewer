@@ -9,7 +9,7 @@ import {
 
 const RadarChart = ({ scores }) => {
   const data = [
-    { metric: 'Emotion', value: Math.round((scores.facial || 0) * 100) },
+    { metric: 'Presence', value: Math.round((scores.facial || 0) * 100) },
     { metric: 'Speech', value: Math.round((scores.speech || 0) * 100) },
     { metric: 'Content', value: Math.round((scores.nlp || 0) * 100) },
     { metric: 'Overall', value: Math.round((scores.final || 0) * 100) },

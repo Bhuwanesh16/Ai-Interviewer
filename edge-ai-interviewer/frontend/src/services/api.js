@@ -14,6 +14,30 @@ apiClient.interceptors.request.use((config) => {
   return config
 })
 
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      console.error('API Error:', error.response.data);
+
+      // Handle session expiration
+      if (error.response.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/register';
+      }
+    } else if (error.request) {
+      // The request was made but no response was received
+      console.error('Network Error: No response received');
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      console.error('Request Error:', error.message);
+    }
+    return Promise.reject(error);
+  }
+)
+
 export const registerUser = (payload) => apiClient.post('/auth/register', payload)
 
 export const loginUser = (payload) => apiClient.post('/auth/login', payload)
@@ -34,6 +58,8 @@ export const analyzeChunk = (formData) =>
 
 export const fetchResult = (sessionId) =>
   apiClient.get(`/interview/result/${sessionId}`)
+
+export const generateFollowup = (payload) => apiClient.post('/interview/generate_followup', payload)
 
 export const fetchHistory = () =>
   apiClient.get('/interview/history')

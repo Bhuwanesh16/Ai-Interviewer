@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision'
 
-const WebcamRecorder = ({ isRecording, onReady, mediaStream, setMediaStream, onEmotionScore }) => {
+const WebcamRecorder = ({ isRecording, onReady, mediaStream, setMediaStream, onEmotionScore, onModelStatus }) => {
   const videoRef = useRef(null)
   const [faceLandmarker, setFaceLandmarker] = useState(null)
   const [isLoadingModel, setIsLoadingModel] = useState(true)
+  const emaScoreRef = useRef(0.55)
+  const lastEmitRef = useRef(0)
 
   // Initialize MediaPipe FaceLandmarker
   useEffect(() => {
@@ -23,14 +25,16 @@ const WebcamRecorder = ({ isRecording, onReady, mediaStream, setMediaStream, onE
           numFaces: 1
         })
         setFaceLandmarker(landmarker)
+        if (typeof onModelStatus === 'function') onModelStatus(true)
       } catch (err) {
         console.error('Failed to initialize FaceLandmarker', err)
+        if (typeof onModelStatus === 'function') onModelStatus(false)
       } finally {
         setIsLoadingModel(false)
       }
     }
     initLandmarker()
-  }, [])
+  }, [onModelStatus])
 
   // Process video frames for emotion detection
   useEffect(() => {
@@ -40,30 +44,97 @@ const WebcamRecorder = ({ isRecording, onReady, mediaStream, setMediaStream, onE
     const processVideo = () => {
       if (videoRef.current && faceLandmarker && isRecording) {
         const video = videoRef.current
-        // Only process if the video frame has been updated
         if (video.currentTime !== lastVideoTime) {
           lastVideoTime = video.currentTime
           try {
             const results = faceLandmarker.detectForVideo(video, performance.now())
-            if (results.faceBlendshapes && results.faceBlendshapes.length > 0) {
-              const shapes = results.faceBlendshapes[0].categories
 
-              const getScore = (name) => shapes.find(s => s.categoryName === name)?.score || 0
+            if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+              const landmarks = results.faceLandmarks[0]
 
-              const smile = Math.max(getScore('mouthSmileLeft'), getScore('mouthSmileRight'))
-              const eyeOpen = 1 - Math.max(getScore('eyeBlinkLeft'), getScore('eyeBlinkRight'))
-              const browDown = Math.max(getScore('browDownLeft'), getScore('browDownRight'))
+              // 1. Engagement (Smile & Expression)
+              let smile = 0
+              if (results.faceBlendshapes && results.faceBlendshapes.length > 0) {
+                const shapes = results.faceBlendshapes[0].categories
+                const getShape = (name) => shapes.find(s => s.categoryName === name)?.score || 0
+                
+                // Combine smile with eye squints and brow movements for a more natural "engagement" score
+                const smileLeft = getShape('mouthSmileLeft')
+                const smileRight = getShape('mouthSmileRight')
+                const cheekPuff = getShape('cheekPuff')
+                const eyeSquintLeft = getShape('eyeSquintLeft')
+                const eyeSquintRight = getShape('eyeSquintRight')
+                
+                // A natural smile usually involves cheeks and eyes
+                smile = (smileLeft + smileRight) / 2
+                const engagementBonus = (eyeSquintLeft + eyeSquintRight) / 4
+                smile = Math.min(1.0, smile * 1.2 + engagementBonus)
+              }
 
-              // Edge AI metric: basic heuristic for interview engagement
-              // Positive signals: smiling, eyes open. Negative: intensely furrowed brows
-              let emoScore = (smile * 0.4) + (eyeOpen * 0.5) + ((1 - browDown) * 0.1)
-              // Normalize slightly to keep it in 0-1 range (smiling implies higher score)
-              emoScore = Math.max(0, Math.min(1, emoScore * 1.5))
+              // 2. Eye Contact (Iris center check)
+              // MediaPipe Landmarker IDs: 468 (Left Iris), 473 (Right Iris)
+              // Left Eye: 362 (inner), 263 (outer) | Right Eye: 33 (outer), 133 (inner)
+              const eyeContact = (() => {
+                const lIris = landmarks[468], rIris = landmarks[473]
+                const lInner = landmarks[362], lOuter = landmarks[263]
+                const rOuter = landmarks[33], rInner = landmarks[133]
+
+                if (!lIris || !rIris) return 0.5
+
+                const eyeRatio = (inner, outer, iris) => {
+                  const dist = Math.sqrt(Math.pow(iris.x - inner.x, 2) + Math.pow(iris.y - inner.y, 2))
+                  const total = Math.sqrt(Math.pow(outer.x - inner.x, 2) + Math.pow(outer.y - inner.y, 2))
+                  return total > 0 ? dist / total : 0.5
+                }
+
+                const lR = eyeRatio(lInner, lOuter, lIris)
+                const rR = eyeRatio(rInner, rOuter, rIris)
+                // 0.5 is centered. We want a score closer to 1 if centered.
+                return 1.0 - (Math.abs(lR - 0.5) + Math.abs(rR - 0.5))
+              })()
+
+              // 3. Posture / Head Stability
+              // Nose tip: 4, Left cheek: 234, Right cheek: 454
+              const posture = (() => {
+                const nose = landmarks[4], lC = landmarks[234], rC = landmarks[454]
+                if (!nose || !lC || !rC) return 0.5
+                const center = (lC.x + rC.x) / 2
+                const offset = Math.abs(nose.x - center)
+                return Math.max(0, 1.0 - offset * 6) // Low offset = 1.0 stability
+              })()
+
+              const rawScore = Math.max(0, Math.min(1, (smile * 0.4 + eyeContact * 0.4 + posture * 0.2)))
+
+              // Smooth the score to avoid jitter + prevent sticking at 0
+              const alpha = 0.15
+              emaScoreRef.current = (alpha * rawScore) + ((1 - alpha) * emaScoreRef.current)
 
               const now = performance.now()
-              if (onEmotionScore && (!videoRef.current._lastE || now - videoRef.current._lastE > 500)) {
-                onEmotionScore(emoScore)
-                videoRef.current._lastE = now
+              if (onEmotionScore && now - lastEmitRef.current > 120) {
+                onEmotionScore({
+                  score: emaScoreRef.current,
+                  eyeContact,
+                  posture,
+                  smile,
+                  presence: 1
+                })
+                lastEmitRef.current = now
+              }
+            } else {
+              // No face detected: slowly decay toward a neutral baseline instead of 0
+              const baseline = 0.45
+              const decayAlpha = 0.04
+              emaScoreRef.current = (decayAlpha * baseline) + ((1 - decayAlpha) * emaScoreRef.current)
+              const now = performance.now()
+              if (onEmotionScore && now - lastEmitRef.current > 250) {
+                onEmotionScore({
+                  score: emaScoreRef.current,
+                  eyeContact: 0.5,
+                  posture: 0.5,
+                  smile: 0,
+                  presence: 0
+                })
+                lastEmitRef.current = now
               }
             }
           } catch (err) {

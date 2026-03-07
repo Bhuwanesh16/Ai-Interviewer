@@ -17,70 +17,59 @@ import logging
 OLLAMA_URL = "http://localhost:11434/api/generate"
 
 MASTER_PROMPT = """
-You are InterviewAI, an industrial-grade AI assessment engine operating in a fully local edge environment.
-Your role is to generate professional technical interview questions tailored to the candidate's configuration.
-You must behave like a senior engineering interviewer from a high-performance technology company.
-Do not provide answers.
-Do not explain anything.
-Do not provide feedback.
-Only generate questions as instructed.
-Maintain strict professional tone.
-Avoid generic or textbook definition-based questions.
-Focus on real-world application, system thinking, optimization, and engineering trade-offs.
+You are InterviewAI, an industrial-grade AI assessment engine. 
+You are a Lead Software Architect at a top-tier tech firm.
+You are conducting a high-signal technical interview. 
+Generate questions that are:
+1. Deeply technical and scenario-based.
+2. Focused on trade-offs, scalability, and internal workings.
+3. Tailored to the candidate's specific "Core Competencies" (Tech Stack).
+4. No generic boilerplate questions.
+5. No explanations, no feedback, no pleasantries.
 """
 
 # Role-Specific Technical Guidance for High-Signal Assessment
 ROLE_SPECIFIC_THEMES = {
-    "Software Engineer": "Clean code, SOLID principles, debugging methodologies, data structures, and algorithm trade-offs.",
-    "Frontend Developer": "React/Vue ecosystem, State management (Redux/Zustand), CSS architecture, Web performance (Core Web Vitals), and Accessibility.",
-    "Backend Developer": "REST/GraphQL API design, SQL/NoSQL optimization, Caching (Redis), Security (Auth/JWT), and Distributed Systems.",
-    "Full Stack Developer": "End-to-end feature lifecycle, client-server contract management, isomorphic rendering, and database integration.",
-    "Data Scientist": "Statistical modeling, Data cleaning/EDA, Model validation, Feature engineering, and presenting insights to stakeholders.",
-    "Machine Learning Engineer": "Model deployment (Miri/FastAPI), Inference optimization, Data versioning, CI/CD for ML, and drift detection.",
-    "DevOps Engineer": "Infrastructure as Code (Terraform), CI/CD pipelines, Kubernetes/Docker, Observability (ELK/Grafana), and Site Reliability.",
-    "Product Manager": "Product strategy, Success metrics (KPIs), Prioritization frameworks (RICE), Stakeholder management, and UX empathy.",
-    "UI/UX Designer": "User research, Design systems, Prototype fidelity, Accessibility, and aligning visual vision with engineering constraints.",
-    "QA Engineer": "Automation frameworks (Playwright/Selenium), Integration testing, Shift-left testing, Bug lifecycle, and Performance testing.",
-    "Cyber Security Analyst": "Threat modeling, OWASP Top 10, Incident response, Auth/IAM policies, and compliance (SOC2/GDPR)."
+    "Software Engineer": "Memory management, concurrency patterns, distributed system design, and performance profiling.",
+    "Frontend Developer": "Browser rendering pipeline, state synchronization, advanced React hooks internal, and bundle optimization.",
+    "Backend Developer": "Database isolation levels, distributed locking, service discovery, and zero-downtime deployment strategies.",
+    "Full Stack Developer": "Client-server state synchronization, authentication flows, monorepo architecture, and end-to-end performance.",
+    "Data Scientist": "Model entropy, hyperparameter optimization, mathematical proofs for algorithms, and large-scale data ingestion.",
+    "Machine Learning Engineer": "Model quantization, inference latency at edge, feature store architecture, and MLOps pipelines.",
+    "DevOps Engineer": "Chaos engineering, multi-cloud networking, eBPF monitoring, and GitOps parity.",
+    "Product Manager": "Go-to-market strategy for technical APIs, feature prioritization under technical debt, and analytics-driven pivots.",
+    "UI/UX Designer": "Atomic design systems, perceptual performance, accessibility (WCAG 2.1), and design-to-code automation.",
+    "QA Engineer": "Shift-left security testing, property-based testing, performance regression suites, and CI pipeline stability.",
+    "Cyber Security Analyst": "Zero-trust architecture, advanced persistent threats (APT), cryptographic implementations, and forensic analysis."
 }
 
 DYNAMIC_PROMPT_TEMPLATE = """
-Interview Configuration:
-- Target Role: {role}
-- Experience Tier: {experience}
-- Core Competencies: {skills}
-- Role Themes: {role_themes}
-- Question Volume: {question_volume}
+[INTERVIEW CONFIGURATION]
+- ROLE: {role}
+- SENIORITY: {experience}
+- TECH STACK: {skills}
+- DOMAIN THEMES: {role_themes}
+- TARGET VOLUME: {question_volume}
 
-CRITICAL: Generate questions SPECIFICALLY for the Target Role "{role}". 
-Roles include: Software Engineer, Frontend Developer, Backend Developer, Full Stack Developer, 
-Data Scientist, Machine Learning Engineer, DevOps Engineer, Product Manager, UI/UX Designer, 
-QA Engineer, Cyber Security Analyst. Tailor each question to the domain and responsibilities of this role.
+[INSTRUCTIONS]
+Generate {question_volume} high-signal interview questions for a {experience} {role}.
+Integrate these specific technologies: {skills}.
+Focus on: {role_themes}.
 
-Generation Rules:
-- Primary Focus: {role_themes}
-- Adjust difficulty based on experience tier.
-- Entry Level → implementation-focused, learning-oriented, hands-on.
-- Intermediate → design + optimization + trade-offs, real-world scenarios.
-- Senior → architecture + scalability + failure handling, system thinking.
-- Lead/Manager → leadership, team dynamics, cross-functional strategy.
-- Use Core Competencies ({skills}) to add domain-specific angles where relevant.
-- Cover different competencies across questions. Avoid repeating topics.
-- Questions must test conceptual depth and real problems in production/industry.
-- Keep each question under 35 words.
-- Label each question exactly as Q1, Q2, Q3, etc. followed by a colon.
-- Do not include answers or explanations.
-- Reject vague definition questions like "What is React?" or "Explain Python."
-- Questions should reflect real problems encountered in the role's day-to-day work.
+Difficulty Alignment:
+- Entry: Implementation details, basic patterns, debugging.
+- Intermediate: Optimization, system interaction, trade-offs.
+- Senior: High-level architecture, scalability, cross-team strategy, failure modes.
+- Lead: Team growth, technical vision, conflict resolution, roadmap alignment.
 
-Output Format (STRICT — follow exactly):
-Q1: <question>
-Q2: <question>
-Q3: <question>
+Output Format:
+Q1: [Question text]
+Q2: [Question text]
+...
 """
 
 FOLLOWUP_PROMPT_TEMPLATE = """
-Live Interview Context:
+Live Interview Context:  
 - Role: {role}
 - Experience: {experience}
 - Previous Question: {previous_question}
@@ -300,8 +289,11 @@ def generate_questions(role: str, experience: str, skills: str, question_volume:
                 "prompt": prompt,
                 "stream": False,
                 "options": {
-                    "temperature": 0.7,
-                    "num_predict": 512,
+                    "temperature": 0.5,
+                    "top_p": 0.9,
+                    "top_k": 40,
+                    "num_predict": 768,
+                    "stop": ["[END]", "Candidate:"]
                 },
             },
             timeout=60,

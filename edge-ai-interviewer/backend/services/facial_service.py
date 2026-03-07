@@ -1,30 +1,183 @@
 """
 Facial analysis service.
 
-In a real setup, you would load your model once at module import time
-and reuse it for all requests to keep inference fast on the edge device.
+Uses MediaPipe Face Mesh to extract basic facial cues like presence
+and smile (mouth aspect ratio) from the video to determine engagement.
 """
 
 from pathlib import Path
 from typing import Dict
+import logging
 
+try:
+    import cv2
+    import math
+    import mediapipe as mp
+    try:
+        from mediapipe.python.solutions import face_mesh as mp_face_mesh
+    except ImportError:
+        import mediapipe.solutions.face_mesh as mp_face_mesh
+    import numpy as np
+    MP_AVAILABLE = True
+except ImportError as e:
+    MP_AVAILABLE = False
+    logging.warning(f"Facial analysis dependencies missing ({e}). Service will fallback.")
+
+from utils.logger import logger
 
 class FacialAnalysisService:
     def __init__(self):
-        # TODO: load your facial expression / emotion model here
-        self._loaded = True
+        self._loaded = MP_AVAILABLE
+        if MP_AVAILABLE:
+            try:
+                self.face_mesh = mp_face_mesh.FaceMesh(
+                    static_image_mode=False,
+                    max_num_faces=1,
+                    refine_landmarks=True,
+                    min_detection_confidence=0.5,
+                    min_tracking_confidence=0.5
+                )
+            except Exception as e:
+                logging.error(f"Failed to initialize FaceMesh: {e}")
+                self._loaded = False
 
-    def analyze_video(self, video_path: str) -> Dict[str, float]:
+    def analyze_video(self, video_path: str) -> Dict[str, any]:
         """
-        Analyze facial expressions from the given video and return a score.
-
-        For now this returns a stubbed score so the rest of the system
-        can function end-to-end.
+        Analyze facial expressions, eye contact, and head stability from the given video.
+        Returns a detailed professional score and metric breakdown.
         """
-        _ = Path(video_path)
-        # Placeholder: return a deterministic but fake score
-        return {"facial_score": 0.78}
+        p = Path(video_path)
+        if not p.exists() or not self._loaded:
+            return {"facial_score": 0.5, "metrics": {"presence": "No Camera"}}
 
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            return {"facial_score": 0.5, "metrics": {"presence": "Video Error"}}
+
+        total_frames = 0
+        face_detected_frames = 0
+        smile_scores = []
+        eye_contact_scores = []
+        head_stability_scores = []
+        
+        # Sample frames to process faster
+        frame_skip = 5
+        frame_count = 0
+
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
+            
+            frame_count += 1
+            if frame_count % frame_skip != 0:
+                continue
+                
+            total_frames += 1
+            h, w, _ = frame.shape
+            
+            # Convert the BGR image to RGB before processing
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            try:
+                results = self.face_mesh.process(frame_rgb)
+            except Exception as e:
+                logging.warning(f"MediaPipe processing error: {e}")
+                continue
+            
+            if results.multi_face_landmarks:
+                face_detected_frames += 1
+                landmarks = results.multi_face_landmarks[0].landmark
+                
+                # 1. Smile / Engagement (Mouth width vs Face width)
+                # Mouth left: 61, right: 291
+                left = landmarks[61]
+                right = landmarks[291]
+                mouth_width = math.hypot(right.x - left.x, right.y - left.y)
+                
+                # Face left: 234, right: 454
+                cheek_left = landmarks[234]
+                cheek_right = landmarks[454]
+                face_width = math.hypot(cheek_right.x - cheek_left.x, cheek_right.y - cheek_left.y)
+                
+                if face_width > 0:
+                    smile_ratio = mouth_width / face_width
+                    smile_scores.append(smile_ratio)
+
+                # 2. Eye Contact (Iris position relative to eye corners)
+                # Left Eye corners: 362 (inner), 263 (outer)
+                # Right Eye corners: 33 (outer), 133 (inner)
+                # Irises: 468 (left), 473 (right)
+                # Ensure iris landmarks are available before accessing
+                try:
+                    if len(landmarks) > 473:
+                        l_iris, r_iris = landmarks[468], landmarks[473]
+                        l_inner, l_outer = landmarks[362], landmarks[263]
+                        r_inner, r_outer = landmarks[133], landmarks[33]
+
+                        def eye_ratio(inner, outer, iris):
+                            total = math.hypot(outer.x - inner.x, outer.y - inner.y)
+                            dist = math.hypot(iris.x - inner.x, iris.y - inner.y)
+                            return dist / total if total > 0 else 0.5
+
+                        l_ratio = eye_ratio(l_inner, l_outer, l_iris)
+                        r_ratio = eye_ratio(r_inner, r_outer, r_iris)
+
+                        # Target ratio ~0.5 means iris is centered
+                        eye_contact = 1.0 - (abs(l_ratio - 0.5) + abs(r_ratio - 0.5))
+                        eye_contact_scores.append(max(0, eye_contact))
+                except:
+                    pass
+
+                # 3. Head Stability (Nose position relative to face boundaries)
+                # Nose tip: 4
+                nose = landmarks[4]
+                # Center of face width
+                face_center_x = (cheek_left.x + cheek_right.x) / 2
+                offset = abs(nose.x - face_center_x)
+                # If offset is small, head is facing forward
+                head_stability = 1.0 - min(offset * 5, 1.0) 
+                head_stability_scores.append(head_stability)
+
+        cap.release()
+        
+        if total_frames == 0:
+            return {"facial_score": 0.5, "metrics": {"presence": "Empty Video"}}
+            
+        presence_ratio = face_detected_frames / total_frames
+        if presence_ratio < 0.2:
+            return {"facial_score": 0.2, "metrics": {"presence": "Low / Off-screen"}}
+            
+        avg_smile = np.mean(smile_scores) if smile_scores else 0
+        avg_eye_contact = np.mean(eye_contact_scores) if eye_contact_scores else 0.5
+        avg_head_stability = np.mean(head_stability_scores) if head_stability_scores else 0.5
+        
+        # Professional Scoring Logic:
+        # 1. Presence (20%): Just being on screen.
+        # 2. Engagement (30%): Smile/Expression ratio.
+        # 3. Eye Contact (30%): Looking at the camera.
+        # 4. Body Language (20%): Head stability / Facing forward.
+        
+        # Normalize smile ratio (typically 0.35 to 0.5)
+        expression_score = min((max(avg_smile - 0.35, 0) / 0.15) * 0.5 + 0.5, 1.0)
+        
+        final_score = (
+            (presence_ratio * 0.2) + 
+            (expression_score * 0.3) + 
+            (avg_eye_contact * 0.3) + 
+            (avg_head_stability * 0.2)
+        )
+        final_score = max(0.1, min(final_score, 1.0))
+        
+        return {
+            "facial_score": round(float(final_score), 2),
+            "metrics": {
+                "presence": f"{round(presence_ratio * 100)}%",
+                "eye_contact": "High" if avg_eye_contact > 0.8 else "Good" if avg_eye_contact > 0.6 else "Needs Improvement",
+                "engagement": "Enthusiastic" if expression_score > 0.75 else "Professional" if expression_score > 0.45 else "Reserved",
+                "posture": "Stable" if avg_head_stability > 0.8 else "Restless" if avg_head_stability < 0.5 else "Average",
+                "smile_index": round(float(avg_smile), 2),
+                "eye_contact_index": round(float(avg_eye_contact), 2)
+            }
+        }
 
 facial_service = FacialAnalysisService()
-

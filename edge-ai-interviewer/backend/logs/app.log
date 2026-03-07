@@ -1,0 +1,2109 @@
+[2026-03-06 22:16:41,280] INFO in logger: Logging initialized
+[2026-03-06 22:18:10,604] INFO in logger: Logging initialized
+[2026-03-06 22:18:38,160] INFO in logger: Logging initialized
+[2026-03-06 22:19:15,053] ERROR in error_handlers: Unhandled exception: int() argument must be a string, a bytes-like object or a real number, not 'NoneType'
+[2026-03-06 22:19:15,062] ERROR in error_handlers: Traceback (most recent call last):
+  File "C:\Users\bhuwa\AppData\Roaming\Python\Python310\site-packages\flask\app.py", line 870, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\bhuwa\AppData\Roaming\Python\Python310\site-packages\flask\app.py", line 855, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 18, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 41, in generate_questions_route
+    num_q = max(1, int(payload.get("numQuestions", 3)))
+TypeError: int() argument must be a string, a bytes-like object or a real number, not 'NoneType'
+
+[2026-03-06 22:48:47,460] INFO in logger: Logging initialized
+[2026-03-07 21:23:10,234] INFO in logger: Logging initialized
+[2026-03-07 21:23:12,215] INFO in logger: Logging initialized
+[2026-03-07 21:26:53,292] INFO in logger: Logging initialized
+[2026-03-07 21:27:06,071] INFO in logger: Logging initialized
+[2026-03-07 21:28:09,486] INFO in logger: Logging initialized
+[2026-03-07 21:28:26,575] INFO in logger: Logging initialized
+[2026-03-07 21:49:15,826] INFO in logger: Logging initialized
+[2026-03-07 21:49:32,627] INFO in logger: Logging initialized
+[2026-03-07 21:57:35,732] INFO in logger: Logging initialized
+[2026-03-07 21:58:03,118] INFO in logger: Logging initialized
+[2026-03-07 21:58:15,997] INFO in logger: Logging initialized
+[2026-03-07 21:58:23,658] INFO in logger: Logging initialized
+[2026-03-07 21:58:49,561] INFO in logger: Logging initialized
+[2026-03-07 21:58:56,924] INFO in logger: Logging initialized
+[2026-03-07 22:01:57,589] INFO in logger: Logging initialized
+[2026-03-07 22:01:59,466] INFO in logger: Logging initialized
+[2026-03-07 22:07:51,146] INFO in logger: Logging initialized
+[2026-03-07 22:08:14,113] INFO in logger: Logging initialized
+[2026-03-07 22:08:35,824] INFO in logger: Logging initialized
+[2026-03-07 22:09:02,863] INFO in logger: Logging initialized
+[2026-03-07 22:10:03,933] INFO in logger: Logging initialized
+[2026-03-07 22:10:32,107] INFO in logger: Logging initialized
+[2026-03-07 22:11:11,424] INFO in logger: Logging initialized
+[2026-03-07 22:14:01,241] ERROR in error_handlers: Unhandled exception: (sqlite3.OperationalError) table interview_sessions has no column named skills
+[SQL: INSERT INTO interview_sessions (id, user_id, position, skills, experience_level, started_at, completed_at, overall_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('2141a5b4-513a-47fc-8a10-a5cb78ff13f7', '370671db-04e3-41d8-af3c-21c37f878831', 'Full Stack Developer', '', 'Intermediate', '2026-03-07 16:44:01.236766', None, None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+[2026-03-07 22:14:02,075] ERROR in error_handlers: Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: table interview_sessions has no column named skills
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 18, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 89, in start_interview
+    db.session.commit()
+    ~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\scoping.py", line 597, in commit
+    return self._proxied.commit()
+           ~~~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "<string>", line 2, in commit
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1311, in commit
+    self._prepare_impl()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "<string>", line 2, in _prepare_impl
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1286, in _prepare_impl
+    self.session.flush()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4331, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4466, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4427, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self.mapper,
+        ^^^^^^^^^^^^
+        uow.states_for_mapper_hierarchy(self.mapper, False, False),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        uow,
+        ^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        base_mapper,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        insert,
+        ^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+        statement,
+        params,
+        execution_options=execution_options,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) table interview_sessions has no column named skills
+[SQL: INSERT INTO interview_sessions (id, user_id, position, skills, experience_level, started_at, completed_at, overall_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('2141a5b4-513a-47fc-8a10-a5cb78ff13f7', '370671db-04e3-41d8-af3c-21c37f878831', 'Full Stack Developer', '', 'Intermediate', '2026-03-07 16:44:01.236766', None, None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+[2026-03-07 22:14:05,398] ERROR in error_handlers: Unhandled exception: (sqlite3.OperationalError) table interview_sessions has no column named skills
+[SQL: INSERT INTO interview_sessions (id, user_id, position, skills, experience_level, started_at, completed_at, overall_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('e99f5d12-b1cf-41dd-ad76-2e3be898ea61', '370671db-04e3-41d8-af3c-21c37f878831', 'Full Stack Developer', '', 'Intermediate', '2026-03-07 16:44:05.397378', None, None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+[2026-03-07 22:14:05,424] ERROR in error_handlers: Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: table interview_sessions has no column named skills
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 18, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 89, in start_interview
+    db.session.commit()
+    ~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\scoping.py", line 597, in commit
+    return self._proxied.commit()
+           ~~~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "<string>", line 2, in commit
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1311, in commit
+    self._prepare_impl()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "<string>", line 2, in _prepare_impl
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1286, in _prepare_impl
+    self.session.flush()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4331, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4466, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4427, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self.mapper,
+        ^^^^^^^^^^^^
+        uow.states_for_mapper_hierarchy(self.mapper, False, False),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        uow,
+        ^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        base_mapper,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        insert,
+        ^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+        statement,
+        params,
+        execution_options=execution_options,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) table interview_sessions has no column named skills
+[SQL: INSERT INTO interview_sessions (id, user_id, position, skills, experience_level, started_at, completed_at, overall_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('e99f5d12-b1cf-41dd-ad76-2e3be898ea61', '370671db-04e3-41d8-af3c-21c37f878831', 'Full Stack Developer', '', 'Intermediate', '2026-03-07 16:44:05.397378', None, None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+[2026-03-07 22:14:25,367] ERROR in error_handlers: Unhandled exception: (sqlite3.OperationalError) table interview_sessions has no column named skills
+[SQL: INSERT INTO interview_sessions (id, user_id, position, skills, experience_level, started_at, completed_at, overall_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('0503cb3f-b902-47c5-b9cb-6af48d00d28a', '370671db-04e3-41d8-af3c-21c37f878831', 'Full Stack Developer', '', 'Intermediate', '2026-03-07 16:44:25.367023', None, None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+[2026-03-07 22:14:25,375] ERROR in error_handlers: Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: table interview_sessions has no column named skills
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 18, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 89, in start_interview
+    db.session.commit()
+    ~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\scoping.py", line 597, in commit
+    return self._proxied.commit()
+           ~~~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "<string>", line 2, in commit
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1311, in commit
+    self._prepare_impl()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "<string>", line 2, in _prepare_impl
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1286, in _prepare_impl
+    self.session.flush()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4331, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4466, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4427, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self.mapper,
+        ^^^^^^^^^^^^
+        uow.states_for_mapper_hierarchy(self.mapper, False, False),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        uow,
+        ^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        base_mapper,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        insert,
+        ^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+        statement,
+        params,
+        execution_options=execution_options,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) table interview_sessions has no column named skills
+[SQL: INSERT INTO interview_sessions (id, user_id, position, skills, experience_level, started_at, completed_at, overall_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('0503cb3f-b902-47c5-b9cb-6af48d00d28a', '370671db-04e3-41d8-af3c-21c37f878831', 'Full Stack Developer', '', 'Intermediate', '2026-03-07 16:44:25.367023', None, None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+[2026-03-07 22:14:27,379] ERROR in error_handlers: Unhandled exception: (sqlite3.OperationalError) table interview_sessions has no column named skills
+[SQL: INSERT INTO interview_sessions (id, user_id, position, skills, experience_level, started_at, completed_at, overall_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('9a0e515d-4c53-43e6-9a54-b2c41fb505cf', '370671db-04e3-41d8-af3c-21c37f878831', 'Full Stack Developer', '', 'Intermediate', '2026-03-07 16:44:27.377458', None, None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+[2026-03-07 22:14:27,403] ERROR in error_handlers: Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: table interview_sessions has no column named skills
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 18, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 89, in start_interview
+    db.session.commit()
+    ~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\scoping.py", line 597, in commit
+    return self._proxied.commit()
+           ~~~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "<string>", line 2, in commit
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1311, in commit
+    self._prepare_impl()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "<string>", line 2, in _prepare_impl
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1286, in _prepare_impl
+    self.session.flush()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4331, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4466, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4427, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self.mapper,
+        ^^^^^^^^^^^^
+        uow.states_for_mapper_hierarchy(self.mapper, False, False),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        uow,
+        ^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        base_mapper,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        insert,
+        ^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+        statement,
+        params,
+        execution_options=execution_options,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) table interview_sessions has no column named skills
+[SQL: INSERT INTO interview_sessions (id, user_id, position, skills, experience_level, started_at, completed_at, overall_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('9a0e515d-4c53-43e6-9a54-b2c41fb505cf', '370671db-04e3-41d8-af3c-21c37f878831', 'Full Stack Developer', '', 'Intermediate', '2026-03-07 16:44:27.377458', None, None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+[2026-03-07 22:14:27,566] ERROR in error_handlers: Unhandled exception: (sqlite3.OperationalError) table interview_sessions has no column named skills
+[SQL: INSERT INTO interview_sessions (id, user_id, position, skills, experience_level, started_at, completed_at, overall_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('0f1a5603-0832-42d3-bedc-6ab84e121f76', '370671db-04e3-41d8-af3c-21c37f878831', 'Full Stack Developer', '', 'Intermediate', '2026-03-07 16:44:27.564359', None, None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+[2026-03-07 22:14:27,585] ERROR in error_handlers: Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: table interview_sessions has no column named skills
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 18, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 89, in start_interview
+    db.session.commit()
+    ~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\scoping.py", line 597, in commit
+    return self._proxied.commit()
+           ~~~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "<string>", line 2, in commit
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1311, in commit
+    self._prepare_impl()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "<string>", line 2, in _prepare_impl
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1286, in _prepare_impl
+    self.session.flush()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4331, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4466, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4427, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self.mapper,
+        ^^^^^^^^^^^^
+        uow.states_for_mapper_hierarchy(self.mapper, False, False),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        uow,
+        ^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        base_mapper,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        insert,
+        ^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+        statement,
+        params,
+        execution_options=execution_options,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) table interview_sessions has no column named skills
+[SQL: INSERT INTO interview_sessions (id, user_id, position, skills, experience_level, started_at, completed_at, overall_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('0f1a5603-0832-42d3-bedc-6ab84e121f76', '370671db-04e3-41d8-af3c-21c37f878831', 'Full Stack Developer', '', 'Intermediate', '2026-03-07 16:44:27.564359', None, None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+[2026-03-07 22:14:27,637] ERROR in error_handlers: Unhandled exception: (sqlite3.OperationalError) table interview_sessions has no column named skills
+[SQL: INSERT INTO interview_sessions (id, user_id, position, skills, experience_level, started_at, completed_at, overall_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('98814f52-6294-4a9b-aef0-3da75d05432a', '370671db-04e3-41d8-af3c-21c37f878831', 'Full Stack Developer', '', 'Intermediate', '2026-03-07 16:44:27.633912', None, None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+[2026-03-07 22:14:27,676] ERROR in error_handlers: Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: table interview_sessions has no column named skills
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 18, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 89, in start_interview
+    db.session.commit()
+    ~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\scoping.py", line 597, in commit
+    return self._proxied.commit()
+           ~~~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "<string>", line 2, in commit
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1311, in commit
+    self._prepare_impl()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "<string>", line 2, in _prepare_impl
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1286, in _prepare_impl
+    self.session.flush()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4331, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4466, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4427, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self.mapper,
+        ^^^^^^^^^^^^
+        uow.states_for_mapper_hierarchy(self.mapper, False, False),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        uow,
+        ^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        base_mapper,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        insert,
+        ^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+        statement,
+        params,
+        execution_options=execution_options,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) table interview_sessions has no column named skills
+[SQL: INSERT INTO interview_sessions (id, user_id, position, skills, experience_level, started_at, completed_at, overall_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('98814f52-6294-4a9b-aef0-3da75d05432a', '370671db-04e3-41d8-af3c-21c37f878831', 'Full Stack Developer', '', 'Intermediate', '2026-03-07 16:44:27.633912', None, None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+[2026-03-07 22:14:27,818] ERROR in error_handlers: Unhandled exception: (sqlite3.OperationalError) table interview_sessions has no column named skills
+[SQL: INSERT INTO interview_sessions (id, user_id, position, skills, experience_level, started_at, completed_at, overall_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('611ac126-9157-4931-b400-cc82ba6c2895', '370671db-04e3-41d8-af3c-21c37f878831', 'Full Stack Developer', '', 'Intermediate', '2026-03-07 16:44:27.817494', None, None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+[2026-03-07 22:14:27,837] ERROR in error_handlers: Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: table interview_sessions has no column named skills
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 18, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 89, in start_interview
+    db.session.commit()
+    ~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\scoping.py", line 597, in commit
+    return self._proxied.commit()
+           ~~~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "<string>", line 2, in commit
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1311, in commit
+    self._prepare_impl()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "<string>", line 2, in _prepare_impl
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1286, in _prepare_impl
+    self.session.flush()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4331, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4466, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4427, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self.mapper,
+        ^^^^^^^^^^^^
+        uow.states_for_mapper_hierarchy(self.mapper, False, False),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        uow,
+        ^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        base_mapper,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        insert,
+        ^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+        statement,
+        params,
+        execution_options=execution_options,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) table interview_sessions has no column named skills
+[SQL: INSERT INTO interview_sessions (id, user_id, position, skills, experience_level, started_at, completed_at, overall_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('611ac126-9157-4931-b400-cc82ba6c2895', '370671db-04e3-41d8-af3c-21c37f878831', 'Full Stack Developer', '', 'Intermediate', '2026-03-07 16:44:27.817494', None, None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+[2026-03-07 22:14:43,975] ERROR in error_handlers: Unhandled exception: (sqlite3.OperationalError) table interview_sessions has no column named skills
+[SQL: INSERT INTO interview_sessions (id, user_id, position, skills, experience_level, started_at, completed_at, overall_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('3e600b30-3a79-402d-8dc7-9c1a84875f0c', '370671db-04e3-41d8-af3c-21c37f878831', 'Full Stack Developer', '', 'Intermediate', '2026-03-07 16:44:43.973217', None, None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+[2026-03-07 22:14:43,976] ERROR in error_handlers: Unhandled exception: (sqlite3.OperationalError) table interview_sessions has no column named skills
+[SQL: INSERT INTO interview_sessions (id, user_id, position, skills, experience_level, started_at, completed_at, overall_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('8d52a5e0-c19a-4072-a4ce-3cc12da03d71', '370671db-04e3-41d8-af3c-21c37f878831', 'Full Stack Developer', '', 'Intermediate', '2026-03-07 16:44:43.975095', None, None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+[2026-03-07 22:14:43,993] ERROR in error_handlers: Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: table interview_sessions has no column named skills
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 18, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 89, in start_interview
+    db.session.commit()
+    ~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\scoping.py", line 597, in commit
+    return self._proxied.commit()
+           ~~~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "<string>", line 2, in commit
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1311, in commit
+    self._prepare_impl()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "<string>", line 2, in _prepare_impl
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1286, in _prepare_impl
+    self.session.flush()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4331, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4466, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4427, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self.mapper,
+        ^^^^^^^^^^^^
+        uow.states_for_mapper_hierarchy(self.mapper, False, False),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        uow,
+        ^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        base_mapper,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        insert,
+        ^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+        statement,
+        params,
+        execution_options=execution_options,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) table interview_sessions has no column named skills
+[SQL: INSERT INTO interview_sessions (id, user_id, position, skills, experience_level, started_at, completed_at, overall_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('8d52a5e0-c19a-4072-a4ce-3cc12da03d71', '370671db-04e3-41d8-af3c-21c37f878831', 'Full Stack Developer', '', 'Intermediate', '2026-03-07 16:44:43.975095', None, None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+[2026-03-07 22:14:44,003] ERROR in error_handlers: Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: table interview_sessions has no column named skills
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 18, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 89, in start_interview
+    db.session.commit()
+    ~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\scoping.py", line 597, in commit
+    return self._proxied.commit()
+           ~~~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "<string>", line 2, in commit
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1311, in commit
+    self._prepare_impl()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "<string>", line 2, in _prepare_impl
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1286, in _prepare_impl
+    self.session.flush()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4331, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4466, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4427, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self.mapper,
+        ^^^^^^^^^^^^
+        uow.states_for_mapper_hierarchy(self.mapper, False, False),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        uow,
+        ^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        base_mapper,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        insert,
+        ^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+        statement,
+        params,
+        execution_options=execution_options,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) table interview_sessions has no column named skills
+[SQL: INSERT INTO interview_sessions (id, user_id, position, skills, experience_level, started_at, completed_at, overall_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('3e600b30-3a79-402d-8dc7-9c1a84875f0c', '370671db-04e3-41d8-af3c-21c37f878831', 'Full Stack Developer', '', 'Intermediate', '2026-03-07 16:44:43.973217', None, None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+[2026-03-07 22:14:44,090] ERROR in error_handlers: Unhandled exception: (sqlite3.OperationalError) table interview_sessions has no column named skills
+[SQL: INSERT INTO interview_sessions (id, user_id, position, skills, experience_level, started_at, completed_at, overall_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('4436026f-8fe5-4951-8272-f17a19cdf02e', '370671db-04e3-41d8-af3c-21c37f878831', 'Full Stack Developer', '', 'Intermediate', '2026-03-07 16:44:44.088403', None, None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+[2026-03-07 22:14:44,111] ERROR in error_handlers: Unhandled exception: (sqlite3.OperationalError) table interview_sessions has no column named skills
+[SQL: INSERT INTO interview_sessions (id, user_id, position, skills, experience_level, started_at, completed_at, overall_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('617c2d7c-3f93-410d-a430-17c6c3565fd4', '370671db-04e3-41d8-af3c-21c37f878831', 'Full Stack Developer', '', 'Intermediate', '2026-03-07 16:44:44.106515', None, None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+[2026-03-07 22:14:44,113] ERROR in error_handlers: Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: table interview_sessions has no column named skills
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 18, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 89, in start_interview
+    db.session.commit()
+    ~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\scoping.py", line 597, in commit
+    return self._proxied.commit()
+           ~~~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "<string>", line 2, in commit
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1311, in commit
+    self._prepare_impl()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "<string>", line 2, in _prepare_impl
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1286, in _prepare_impl
+    self.session.flush()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4331, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4466, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4427, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self.mapper,
+        ^^^^^^^^^^^^
+        uow.states_for_mapper_hierarchy(self.mapper, False, False),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        uow,
+        ^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        base_mapper,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        insert,
+        ^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+        statement,
+        params,
+        execution_options=execution_options,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) table interview_sessions has no column named skills
+[SQL: INSERT INTO interview_sessions (id, user_id, position, skills, experience_level, started_at, completed_at, overall_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('4436026f-8fe5-4951-8272-f17a19cdf02e', '370671db-04e3-41d8-af3c-21c37f878831', 'Full Stack Developer', '', 'Intermediate', '2026-03-07 16:44:44.088403', None, None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+[2026-03-07 22:14:44,136] ERROR in error_handlers: Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: table interview_sessions has no column named skills
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 18, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 89, in start_interview
+    db.session.commit()
+    ~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\scoping.py", line 597, in commit
+    return self._proxied.commit()
+           ~~~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "<string>", line 2, in commit
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1311, in commit
+    self._prepare_impl()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "<string>", line 2, in _prepare_impl
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1286, in _prepare_impl
+    self.session.flush()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4331, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4466, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4427, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self.mapper,
+        ^^^^^^^^^^^^
+        uow.states_for_mapper_hierarchy(self.mapper, False, False),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        uow,
+        ^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        base_mapper,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        insert,
+        ^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+        statement,
+        params,
+        execution_options=execution_options,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) table interview_sessions has no column named skills
+[SQL: INSERT INTO interview_sessions (id, user_id, position, skills, experience_level, started_at, completed_at, overall_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('617c2d7c-3f93-410d-a430-17c6c3565fd4', '370671db-04e3-41d8-af3c-21c37f878831', 'Full Stack Developer', '', 'Intermediate', '2026-03-07 16:44:44.106515', None, None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+[2026-03-07 22:14:44,238] ERROR in error_handlers: Unhandled exception: (sqlite3.OperationalError) table interview_sessions has no column named skills
+[SQL: INSERT INTO interview_sessions (id, user_id, position, skills, experience_level, started_at, completed_at, overall_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('dfad4614-7ca3-4772-9b09-e637b2bc9ef2', '370671db-04e3-41d8-af3c-21c37f878831', 'Full Stack Developer', '', 'Intermediate', '2026-03-07 16:44:44.237407', None, None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+[2026-03-07 22:14:44,253] ERROR in error_handlers: Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: table interview_sessions has no column named skills
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 18, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 89, in start_interview
+    db.session.commit()
+    ~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\scoping.py", line 597, in commit
+    return self._proxied.commit()
+           ~~~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "<string>", line 2, in commit
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1311, in commit
+    self._prepare_impl()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "<string>", line 2, in _prepare_impl
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1286, in _prepare_impl
+    self.session.flush()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4331, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4466, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4427, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self.mapper,
+        ^^^^^^^^^^^^
+        uow.states_for_mapper_hierarchy(self.mapper, False, False),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        uow,
+        ^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        base_mapper,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        insert,
+        ^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+        statement,
+        params,
+        execution_options=execution_options,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) table interview_sessions has no column named skills
+[SQL: INSERT INTO interview_sessions (id, user_id, position, skills, experience_level, started_at, completed_at, overall_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('dfad4614-7ca3-4772-9b09-e637b2bc9ef2', '370671db-04e3-41d8-af3c-21c37f878831', 'Full Stack Developer', '', 'Intermediate', '2026-03-07 16:44:44.237407', None, None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+[2026-03-07 22:14:45,961] ERROR in error_handlers: Unhandled exception: (sqlite3.OperationalError) table interview_sessions has no column named skills
+[SQL: INSERT INTO interview_sessions (id, user_id, position, skills, experience_level, started_at, completed_at, overall_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('190bf231-574f-40d7-9a56-dbfb3634442f', '370671db-04e3-41d8-af3c-21c37f878831', 'Full Stack Developer', '', 'Intermediate', '2026-03-07 16:44:45.961277', None, None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+[2026-03-07 22:14:45,971] ERROR in error_handlers: Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: table interview_sessions has no column named skills
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 18, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 89, in start_interview
+    db.session.commit()
+    ~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\scoping.py", line 597, in commit
+    return self._proxied.commit()
+           ~~~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "<string>", line 2, in commit
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1311, in commit
+    self._prepare_impl()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "<string>", line 2, in _prepare_impl
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1286, in _prepare_impl
+    self.session.flush()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4331, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4466, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4427, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self.mapper,
+        ^^^^^^^^^^^^
+        uow.states_for_mapper_hierarchy(self.mapper, False, False),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        uow,
+        ^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        base_mapper,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        insert,
+        ^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+        statement,
+        params,
+        execution_options=execution_options,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) table interview_sessions has no column named skills
+[SQL: INSERT INTO interview_sessions (id, user_id, position, skills, experience_level, started_at, completed_at, overall_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('190bf231-574f-40d7-9a56-dbfb3634442f', '370671db-04e3-41d8-af3c-21c37f878831', 'Full Stack Developer', '', 'Intermediate', '2026-03-07 16:44:45.961277', None, None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+[2026-03-07 22:15:07,102] ERROR in error_handlers: Unhandled exception: (sqlite3.OperationalError) table interview_sessions has no column named skills
+[SQL: INSERT INTO interview_sessions (id, user_id, position, skills, experience_level, started_at, completed_at, overall_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('c6ea86d9-9f8a-4140-88b2-289b0036c611', '370671db-04e3-41d8-af3c-21c37f878831', 'Frontend Developer', '', 'Intermediate', '2026-03-07 16:45:07.101705', None, None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+[2026-03-07 22:15:07,110] ERROR in error_handlers: Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: table interview_sessions has no column named skills
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 18, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 89, in start_interview
+    db.session.commit()
+    ~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\scoping.py", line 597, in commit
+    return self._proxied.commit()
+           ~~~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2030, in commit
+    trans.commit(_to_root=True)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "<string>", line 2, in commit
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1311, in commit
+    self._prepare_impl()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "<string>", line 2, in _prepare_impl
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 137, in _go
+    ret_value = fn(self, *arg, **kw)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1286, in _prepare_impl
+    self.session.flush()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4331, in flush
+    self._flush(objects)
+    ~~~~~~~~~~~^^^^^^^^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4466, in _flush
+    with util.safe_reraise():
+         ~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 121, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 4427, in _flush
+    flush_context.execute()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+    ~~~~~~~~~~~^^^^^^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self.mapper,
+        ^^^^^^^^^^^^
+        uow.states_for_mapper_hierarchy(self.mapper, False, False),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        uow,
+        ^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        base_mapper,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        insert,
+        ^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+        statement,
+        params,
+        execution_options=execution_options,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1419, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\sql\elements.py", line 527, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, execution_options
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1641, in _execute_clauseelement
+    ret = self._execute_context(
+        dialect,
+    ...<8 lines>...
+        cache_hit=cache_hit,
+    )
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1846, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, parameters
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1986, in _exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 2363, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\base.py", line 1967, in _exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\sqlalchemy\engine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) table interview_sessions has no column named skills
+[SQL: INSERT INTO interview_sessions (id, user_id, position, skills, experience_level, started_at, completed_at, overall_score) VALUES (?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('c6ea86d9-9f8a-4140-88b2-289b0036c611', '370671db-04e3-41d8-af3c-21c37f878831', 'Frontend Developer', '', 'Intermediate', '2026-03-07 16:45:07.101705', None, None)]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+
+[2026-03-07 22:20:04,102] INFO in logger: Logging initialized
+[2026-03-07 22:20:05,238] INFO in logger: Logging initialized
+[2026-03-07 22:21:10,294] ERROR in error_handlers: Unhandled exception: unsupported operand type(s) for +: 'float' and 'NoneType'
+[2026-03-07 22:21:10,312] ERROR in error_handlers: Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 18, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 174, in submit_interview
+    report = report_service.generate_feedback(
+        {"facial": response.facial_score, "speech": response.speech_score, "nlp": response.nlp_score, "final": response.final_score},
+    ...<6 lines>...
+        facial_details=facial_result
+    )
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\services\report_service.py", line 80, in generate_feedback
+    overall_avg = (facial + speech + nlp) / 3
+                   ~~~~~~~~~~~~~~~~^~~~~
+TypeError: unsupported operand type(s) for +: 'float' and 'NoneType'
+
+[2026-03-07 22:21:50,911] ERROR in error_handlers: Unhandled exception: unsupported operand type(s) for +: 'float' and 'NoneType'
+[2026-03-07 22:21:50,916] ERROR in error_handlers: Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 18, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 174, in submit_interview
+    report = report_service.generate_feedback(
+        {"facial": response.facial_score, "speech": response.speech_score, "nlp": response.nlp_score, "final": response.final_score},
+    ...<6 lines>...
+        facial_details=facial_result
+    )
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\services\report_service.py", line 80, in generate_feedback
+    overall_avg = (facial + speech + nlp) / 3
+                   ~~~~~~~~~~~~~~~~^~~~~
+TypeError: unsupported operand type(s) for +: 'float' and 'NoneType'
+
+[2026-03-07 22:22:03,044] ERROR in error_handlers: Unhandled exception: unsupported operand type(s) for +: 'float' and 'NoneType'
+[2026-03-07 22:22:03,048] ERROR in error_handlers: Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 18, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 174, in submit_interview
+    report = report_service.generate_feedback(
+        {"facial": response.facial_score, "speech": response.speech_score, "nlp": response.nlp_score, "final": response.final_score},
+    ...<6 lines>...
+        facial_details=facial_result
+    )
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\services\report_service.py", line 80, in generate_feedback
+    overall_avg = (facial + speech + nlp) / 3
+                   ~~~~~~~~~~~~~~~~^~~~~
+TypeError: unsupported operand type(s) for +: 'float' and 'NoneType'
+
+[2026-03-07 22:22:57,354] INFO in logger: Logging initialized
+[2026-03-07 22:23:21,221] INFO in logger: Logging initialized
+[2026-03-07 22:23:51,260] INFO in logger: Logging initialized
+[2026-03-07 22:24:24,378] INFO in logger: Logging initialized
+[2026-03-07 22:27:20,320] ERROR in error_handlers: Unhandled exception: '<' not supported between instances of 'float' and 'NoneType'
+[2026-03-07 22:27:20,336] ERROR in error_handlers: Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 18, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 174, in submit_interview
+    report = report_service.generate_feedback(
+        {"facial": response.facial_score, "speech": response.speech_score, "nlp": response.nlp_score, "final": response.final_score},
+    ...<6 lines>...
+        facial_details=facial_result
+    )
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\services\report_service.py", line 105, in generate_feedback
+    weakest = min([("nlp", nlp), ("speech", speech), ("facial", facial)], key=lambda x: x[1])
+TypeError: '<' not supported between instances of 'float' and 'NoneType'
+
+[2026-03-07 22:28:41,213] ERROR in error_handlers: Unhandled exception: '<' not supported between instances of 'float' and 'NoneType'
+[2026-03-07 22:28:41,218] ERROR in error_handlers: Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 18, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 174, in submit_interview
+    report = report_service.generate_feedback(
+        {"facial": response.facial_score, "speech": response.speech_score, "nlp": response.nlp_score, "final": response.final_score},
+    ...<6 lines>...
+        facial_details=facial_result
+    )
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\services\report_service.py", line 105, in generate_feedback
+    weakest = min([("nlp", nlp), ("speech", speech), ("facial", facial)], key=lambda x: x[1])
+TypeError: '<' not supported between instances of 'float' and 'NoneType'
+
+[2026-03-07 22:33:09,794] INFO in logger: Logging initialized
+[2026-03-07 22:42:04,142] INFO in logger: Logging initialized
+[2026-03-07 22:42:58,893] INFO in logger: Logging initialized
+[2026-03-07 22:49:53,906] INFO in logger: Logging initialized
+[2026-03-07 22:49:54,823] INFO in logger: Logging initialized
+[2026-03-07 22:51:29,650] INFO in logger: Logging initialized
+[2026-03-07 22:51:32,511] INFO in logger: Logging initialized
+[2026-03-07 22:59:33,478] INFO in logger: Logging initialized
+[2026-03-07 22:59:35,917] INFO in logger: Logging initialized
+[2026-03-07 22:59:40,119] INFO in logger: Logging initialized
+[2026-03-07 22:59:50,509] INFO in logger: Logging initialized
+[2026-03-07 23:00:13,886] INFO in logger: Logging initialized
+[2026-03-07 23:00:15,323] INFO in logger: Logging initialized
+[2026-03-07 23:03:54,970] INFO in logger: Logging initialized
+[2026-03-07 23:07:23,073] INFO in logger: Logging initialized
+[2026-03-07 23:09:21,411] INFO in logger: Logging initialized
+[2026-03-07 23:10:25,376] INFO in logger: Logging initialized
+[2026-03-07 23:11:39,212] INFO in logger: Logging initialized
+[2026-03-07 23:11:39,246] INFO in logger: Logging initialized
+[2026-03-07 23:11:39,246] INFO in logger: Logging initialized

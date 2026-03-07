@@ -20,7 +20,8 @@ class ReportService:
         nlp_details: Dict[str, any] = None,
         role: str = "Candidate",
         level: str = "Intermediate",
-        question: str = ""
+        question: str = "",
+        facial_details: Dict[str, any] = None
     ) -> Dict[str, any]:
         facial = scores.get("facial", 0)
         speech = scores.get("speech", 0)
@@ -34,10 +35,10 @@ class ReportService:
             ai_data = generate_ai_feedback(role, level, question, transcript, scores)
             if ai_data and ai_data.get("feedback"):
                 # Success! Return AI feedback
-                return self._finalize_report(scores, transcript, ai_data["feedback"], ai_data["suggestions"], speech_details, nlp_details, is_fallback_transcript)
+                return self._finalize_report(scores, transcript, ai_data["feedback"], ai_data["suggestions"], speech_details, nlp_details, is_fallback_transcript, facial_details)
 
         # --- Rules-Based Fallback ---
-        # Advanced Phrasing Engine
+        # ... (rest of the logic remains the same)
         phrasings = {
             "strengths": {
                 "high": ["You demonstrated exceptional technical depth.", "Your response shows a clear command of this domain.", "Excellent articulation of core engineering concepts."],
@@ -63,6 +64,12 @@ class ReportService:
 
         # Select phrasings based on scores
         def pick(category, score):
+            if score is None:
+                # Handle missing signal due to technical issues
+                if category == "nlp":
+                    return "Note: Content analysis was bypassable due to a transcription interruption."
+                return "Data for this metric was inconclusive due to technical hardware hurdles."
+                
             if score >= 0.85: tier = "high"
             elif score >= 0.5: tier = "mid"
             else: tier = "low"
@@ -76,7 +83,8 @@ class ReportService:
         word_count = nlp_metrics.get("word_count", 0 if is_fallback_transcript else len(transcript.split()))
 
         # 1. Strengths section (always first)
-        overall_avg = (facial + speech + nlp) / 3
+        active_vals = [v for v in [facial, speech, nlp] if v is not None]
+        overall_avg = sum(active_vals) / len(active_vals) if active_vals else 0.0
         feedback_sections.append(f"Strengths: {pick('strengths', overall_avg)}")
 
         # 2. Detailed Dimension Assessment
@@ -94,7 +102,8 @@ class ReportService:
 
         suggestions = []
         # Suggestions based on weakest area
-        weakest = min([("nlp", nlp), ("speech", speech), ("facial", facial)], key=lambda x: x[1])
+        valid_scores = [x for x in [("nlp", nlp), ("speech", speech), ("facial", facial)] if x[1] is not None]
+        weakest = min(valid_scores, key=lambda x: x[1]) if valid_scores else ("speech", 0)
         if weakest[0] == "nlp":
             suggestions = ["Incorporate more role-specific technical keywords.", "Use the STAR method to structure your narrative.", "Elaborate more on specific trade-offs made."]
         elif weakest[0] == "speech":
@@ -106,11 +115,13 @@ class ReportService:
             suggestions.append("Verify your hardware connection and mic settings.")
 
         fallback_feedback = "\n\n".join(feedback_sections)
-        return self._finalize_report(scores, transcript, fallback_feedback, suggestions, speech_details, nlp_details, is_fallback_transcript)
+        return self._finalize_report(scores, transcript, fallback_feedback, suggestions, speech_details, nlp_details, is_fallback_transcript, facial_details)
 
-    def _finalize_report(self, scores, transcript, feedback, suggestions, speech_details, nlp_details, is_fallback_transcript):
+    def _finalize_report(self, scores, transcript, feedback, suggestions, speech_details, nlp_details, is_fallback_transcript, facial_details=None):
         nlp_metrics = nlp_details.get("metrics", {}) if nlp_details else {}
         speech_metrics = speech_details.get("metrics", {}) if speech_details else {}
+        facial_metrics = facial_details.get("metrics", {}) if facial_details else {}
+        
         speech_score = scores.get("speech", 0) or (speech_details.get("speech_score") if speech_details else 0)
         nlp_score = scores.get("nlp", 0)
         final = scores.get("final", 0)
@@ -135,17 +146,19 @@ class ReportService:
 
         # Derive content_validity from nlp_score when raw says Weak/Unrelated
         raw_validity = nlp_metrics.get("content_validity", "Confirmed")
-        if raw_validity == "Weak/Unrelated" and nlp_score >= 0.35:
+        # Ensure nlp_score is a float for comparison
+        cmp_nlp = nlp_score if nlp_score is not None else 0.0
+        if raw_validity == "Weak/Unrelated" and cmp_nlp >= 0.35:
             content_validity = "Partial"
         elif is_fallback_transcript:
             content_validity = "N/A"
         else:
-            content_validity = "Confirmed" if (is_valid or nlp_score >= 0.25) else "Weak/Unrelated"
+            content_validity = "Confirmed" if (is_valid or cmp_nlp >= 0.25) else "Weak/Unrelated"
 
         # Verdict logic (Consistent)
         if is_fallback_transcript:
             verdict = "Technical Difficulty - Transcription Unavailable"
-        elif not is_valid and nlp_score < 0.2:
+        elif not is_valid and cmp_nlp < 0.2 and not is_fallback_transcript:
             verdict = "Non-Responsive - High Divergence"
         elif final > 0.88:
             verdict = "Outstanding - Role-Ready Lead"
@@ -167,6 +180,9 @@ class ReportService:
                 "speaking_rate": pace,
                 "clarity_rating": clarity,
                 "content_validity": content_validity,
+                "eye_contact": facial_metrics.get("eye_contact", "N/A"),
+                "body_language": facial_metrics.get("posture", "N/A"),
+                "confidence_level": speech_metrics.get("confidence", "N/A"),
                 "sentiment_profile": "Professional & Balanced" if final > 0.7 else "Developing Authority"
             }
         }
@@ -192,8 +208,12 @@ class ReportService:
         elif avg_score > 0.50: verdict = "Capable with good foundations; focus on technical depth and confidence."
         else: verdict = "Developing performance; significant growth needed in technical articulation."
 
+        # Use rounding rather than truncation so displayed percentages match the
+        # final score badge on the frontend.  `int()` would drop the decimal part
+        # which could produce off-by-one discrepancies (e.g. 0.467 -> 46 vs 47).
+        avg_pct = round(avg_score * 100)
         executive_summary = (
-            f"Overall, you maintained a {trend} performance level with an average score of {int(avg_score*100)}%. "
+            f"Overall, you maintained a {trend} performance level with an average score of {avg_pct}%. "
             + f"Your performance suggests a '{verdict.split(';')[0]}' status. "
             + ("You showed notable improvement as the session progressed." if trend == "improving" else "")
         )
