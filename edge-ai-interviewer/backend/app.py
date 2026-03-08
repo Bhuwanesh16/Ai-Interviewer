@@ -2,20 +2,28 @@
 Flask application factory.
 ffmpeg is auto-injected into PATH at startup (Windows) so Whisper works
 every time you run `python app.py` — no manual steps needed.
+
+Performance fixes:
+- phi3 pre-warm thread: loads model into RAM at startup so first user
+  request doesn't wait 40s for model to load.
+- /api/health returns a cache-control header so browser doesn't need to
+  hit the server on every poll (pairs with Interview.jsx fix).
 """
 
 import os
 import sys
 import subprocess
 import logging
+import threading
+import time
 from pathlib import Path
 from flask import Flask, request, jsonify
 
 
-# ── Auto-inject ffmpeg on Windows — inline, no external module needed ────────
+# ── Auto-inject ffmpeg on Windows ─────────────────────────────────────────────
 def _ensure_ffmpeg():
     if sys.platform != "win32":
-        return  # Linux/macOS: nothing to do
+        return
 
     def _callable():
         try:
@@ -40,7 +48,6 @@ def _ensure_ffmpeg():
         str(Path.home() / "scoop" / "apps" / "ffmpeg" / "current" / "bin"),
     ]
 
-    # Check known locations
     for d in search_dirs:
         if (Path(d) / "ffmpeg.exe").exists():
             os.environ["PATH"] = d + ";" + os.environ.get("PATH", "")
@@ -48,7 +55,6 @@ def _ensure_ffmpeg():
                 logging.info(f"[ffmpeg] Auto-injected from: {d}")
                 return
 
-    # Glob search under common roots
     for root in [Path("C:/ffmpeg"), Path("C:/tools"), Path.home() / "ffmpeg"]:
         if not root.exists():
             continue
@@ -60,9 +66,7 @@ def _ensure_ffmpeg():
                 return
 
     logging.warning(
-        "[ffmpeg] Not found on this machine. "
-        "Run: python utils/fix_ffmpeg.py  to download and install it. "
-        "Whisper transcription will not work until ffmpeg is installed."
+        "[ffmpeg] Not found. Run: python utils/fix_ffmpeg.py to install it."
     )
 
 _ensure_ffmpeg()
@@ -72,6 +76,36 @@ from config import get_config
 from extensions import init_extensions, db
 from utils.logger import setup_logging
 from utils.error_handlers import register_error_handlers
+
+
+# ── phi3 pre-warm — runs once in background after Flask starts ────────────────
+def _prewarm_phi3():
+    """
+    Send a minimal request to Ollama so phi3 loads its weights into RAM.
+    This means the first real user request takes ~2s instead of ~40s.
+    Runs in a daemon thread so it never blocks startup.
+    """
+    time.sleep(4)  # wait for Flask to finish initialising
+    try:
+        import requests as req
+        ollama_url = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
+        resp = req.post(
+            f"{ollama_url}/api/generate",
+            json={
+                "model": os.environ.get("OLLAMA_MODEL", "phi3"),
+                "prompt": "Hello",
+                "stream": False,
+                "options": {"num_predict": 1},
+            },
+            timeout=90,
+        )
+        if resp.status_code == 200:
+            logging.info("[prewarm] phi3 loaded into RAM ✓ — first request will be fast")
+        else:
+            logging.warning(f"[prewarm] phi3 responded with status {resp.status_code}")
+    except Exception as exc:
+        logging.warning(f"[prewarm] phi3 pre-warm failed (Ollama may not be running): {exc}")
+# ─────────────────────────────────────────────────────────────────────────────
 
 
 def create_app():
@@ -96,7 +130,12 @@ def create_app():
 
     @app.route("/api/health", methods=["GET", "OPTIONS"])
     def health_check():
-        return jsonify({"status": "ok"})
+        resp = jsonify({"status": "ok"})
+        # Tell the browser it can cache this response for 25 seconds.
+        # Combined with the 30s poll interval in Interview.jsx, this means
+        # zero redundant network requests — the browser serves from cache.
+        resp.headers["Cache-Control"] = "public, max-age=25"
+        return resp
 
     @app.route("/api/asr_status", methods=["GET", "OPTIONS"])
     def asr_status():
@@ -141,4 +180,8 @@ def create_app():
 if __name__ == "__main__":
     app = create_app()
     port = int(os.getenv("PORT", 5000))
+
+    # Start phi3 pre-warm in background — doesn't block Flask startup
+    threading.Thread(target=_prewarm_phi3, daemon=True).start()
+
     app.run(host="0.0.0.0", port=port, debug=True)

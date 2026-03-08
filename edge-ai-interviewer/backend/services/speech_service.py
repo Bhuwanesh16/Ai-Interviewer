@@ -29,7 +29,7 @@ class SpeechAnalysisService:
     def __init__(self):
         self._loaded = LIBROSA_AVAILABLE
 
-    def analyze_audio(self, audio_path: str) -> Dict[str, any]:
+    def analyze_audio(self, audio_path: str, duration_override: float = None) -> Dict[str, any]:
         _ = Path(audio_path)
 
         if not LIBROSA_AVAILABLE:
@@ -46,7 +46,12 @@ class SpeechAnalysisService:
             # 1. Speaking Rate Heuristic (using onset detection)
             onset_env = librosa.onset.onset_strength(y=y, sr=sr)
             onsets = librosa.onset.onset_detect(onset_envelope=onset_env, sr=sr)
-            duration_sec = librosa.get_duration(y=y, sr=sr)
+            # Prefer a provided duration (e.g. from ASR) which reflects
+            # actual spoken content; fall back to file duration otherwise.
+            if duration_override is not None and duration_override > 0:
+                duration_sec = float(duration_override)
+            else:
+                duration_sec = librosa.get_duration(y=y, sr=sr)
 
             if duration_sec == 0:
                 return {"speech_score": 0.0, "metrics": {}}

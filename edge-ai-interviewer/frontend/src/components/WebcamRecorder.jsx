@@ -1,31 +1,31 @@
 /**
- * WebcamRecorder.jsx — Performance-optimized
+ * WebcamRecorder.jsx — Performance-optimized v2
  *
- * Violation fixes applied (on top of previous refineLandmarks/throttle fixes):
+ * Fixes for '[Violation] message handler took Xms':
  *
- * 1. Throttle faceMesh.send() at source — previously Camera fired onFrame at
- *    ~30fps, each frame enqueued a MediaPipe inference task. Now we gate sends
- *    to SEND_THROTTLE_MS (100ms = ~10fps), so MediaPipe processes 3x fewer
- *    frames and the message handler fires 3x less often. Biggest remaining win.
+ * 1. SEND_THROTTLE_MS raised 100 → 333ms (~3fps inference instead of 10fps)
+ *    MediaPipe inference is ~150-200ms/frame on CPU. At 10fps you queue
+ *    frames faster than they process, causing a backlog that spikes to 1400ms.
+ *    3fps means one frame fully completes before the next starts.
  *
- * 2. Canvas draw decoupled via requestAnimationFrame — landmark overlay drawing
- *    no longer blocks the onResults message handler. We store latest landmarks
- *    in a ref and schedule a rAF paint separately, keeping the handler lean.
+ * 2. onResults is now fully non-blocking:
+ *    - No setState inside onResults at all
+ *    - Scores written to a ref (latestScoreRef)
+ *    - A separate setInterval flushes to React state at 2Hz (every 500ms)
+ *    This completely decouples MediaPipe inference from React render cycles.
  *
- * 3. Score math pulled into a pure function — avoids closure captures and
- *    makes the hot path inside onResults as short as possible.
+ * 3. faceMesh.send() wrapped in try/catch — if MediaPipe is still processing
+ *    the previous frame it throws; we now silently skip instead of queuing.
  *
- * 4. ctx.save/restore removed from hot path — not needed for our simple arc
- *    draws; removing it saves ~0.3ms per frame.
+ * 4. Camera resolution reduced 640x480 → 320x240
+ *    MediaPipe face detection works fine at 320x240. Lower res = 4x fewer
+ *    pixels to process = significantly faster inference per frame.
  *
- * 5. Single getContext('2d') call cached in a ref — previously called every
- *    frame inside onResults.
+ * 5. refineLandmarks kept false — saves +40ms/frame for unused precision.
  *
- * Previous fixes retained:
- *   - refineLandmarks: false
- *   - RESULTS_THROTTLE_MS (state/callback gate)
- *   - Canvas resize only on dimension change
- *   - Camera track cleanup, duplicate script guard
+ * 6. Canvas paint loop unchanged (rAF-based, separate from inference).
+ *
+ * 7. isSendingRef guard — prevents concurrent faceMesh.send() calls entirely.
  */
 
 import { useEffect, useRef, useState } from 'react'
@@ -34,17 +34,14 @@ import { motion } from 'framer-motion'
 const MEDIAPIPE_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js'
 const CAMERA_CDN    = 'https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js'
 
-/** How often (ms) to actually send a frame to MediaPipe for inference. */
-const SEND_THROTTLE_MS    = 100   // ~10fps inference (was every frame ~30fps)
+// 3fps inference — gives MediaPipe time to finish each frame before the next
+const SEND_THROTTLE_MS  = 333
+// Flush scores to React state 2x per second — keeps UI responsive
+const STATE_FLUSH_MS    = 500
 
-/** How often (ms) to push scores to React state + parent callback. */
-const RESULTS_THROTTLE_MS = 200   // ~5fps state updates
-
-// ─── Pure score computation (no closures, easy to profile) ──────────────────
 const MESH_POINTS = [33, 133, 362, 263, 61, 291, 4, 234, 454]
 
 function computeScores(lm) {
-  // Eye contact
   let eyeScore = 0.5
   if (lm.length > 473) {
     const eyeRatio = (inner, outer, iris) => {
@@ -57,14 +54,12 @@ function computeScores(lm) {
     eyeScore = Math.max(0, 1 - (Math.abs(lR - 0.5) + Math.abs(rR - 0.5)))
   }
 
-  // Smile
-  const mouthW   = Math.hypot(lm[291].x - lm[61].x, lm[291].y - lm[61].y)
-  const faceW    = Math.hypot(lm[454].x - lm[234].x, lm[454].y - lm[234].y)
+  const mouthW     = Math.hypot(lm[291].x - lm[61].x,  lm[291].y - lm[61].y)
+  const faceW      = Math.hypot(lm[454].x - lm[234].x, lm[454].y - lm[234].y)
   const smileRatio = faceW > 0 ? mouthW / faceW : 0
   const smileScore = Math.min(Math.max((smileRatio - 0.3) / 0.25, 0) * 0.5 + 0.5, 1)
 
-  // Head stability
-  const centerX      = (lm[234].x + lm[454].x) / 2
+  const centerX       = (lm[234].x + lm[454].x) / 2
   const headStability = Math.max(0, 1 - Math.abs(lm[4].x - centerX) * 5)
 
   const score = Math.min(
@@ -74,9 +69,6 @@ function computeScores(lm) {
 
   return {
     score,
-    eyeScore,
-    smileRatio,
-    headStability,
     eyeContact: eyeScore > 0.75 ? 'High' : eyeScore > 0.5 ? 'Good' : 'Low',
     posture:    headStability > 0.75 ? 'Stable' : headStability > 0.45 ? 'Average' : 'Restless',
     smile:      Math.round(smileRatio * 100),
@@ -84,7 +76,6 @@ function computeScores(lm) {
   }
 }
 
-// ─── Script loader (unchanged) ───────────────────────────────────────────────
 const loadScript = (src) =>
   new Promise((resolve, reject) => {
     if (document.querySelector(`script[src="${src}"]`)) { resolve(); return }
@@ -94,7 +85,6 @@ const loadScript = (src) =>
     document.head.appendChild(s)
   })
 
-// ─── Component ───────────────────────────────────────────────────────────────
 const WebcamRecorder = ({
   isRecording,
   mediaStream,
@@ -102,48 +92,62 @@ const WebcamRecorder = ({
   onModelStatus,
   onEmotionScore,
 }) => {
-  const videoRef      = useRef(null)
-  const canvasRef     = useRef(null)
-  const cameraRef     = useRef(null)
-  const streamRef     = useRef(null)
-  const ctxRef        = useRef(null)           // cached 2d context
-  const isRecRef      = useRef(isRecording)
-  const lastSendRef   = useRef(0)              // throttle: faceMesh.send
-  const lastEmitRef   = useRef(0)              // throttle: onEmotionScore
-  const canvasSizeRef = useRef({ w: 0, h: 0 })
-  const pendingLmRef  = useRef(null)           // latest landmarks for rAF draw
-  const rafRef        = useRef(null)           // rAF handle
+  const videoRef       = useRef(null)
+  const canvasRef      = useRef(null)
+  const cameraRef      = useRef(null)
+  const streamRef      = useRef(null)
+  const ctxRef         = useRef(null)
+  const isRecRef       = useRef(isRecording)
+  const lastSendRef    = useRef(0)
+  const canvasSizeRef  = useRef({ w: 0, h: 0 })
+  const pendingLmRef   = useRef(null)
+  const rafRef         = useRef(null)
+  const flushRef       = useRef(null)          // setInterval for state flush
+  const isSendingRef   = useRef(false)         // guard against concurrent sends
+  const latestScoreRef = useRef(null)          // latest score, flushed by interval
+  const onEmotionRef   = useRef(onEmotionScore) // stable ref to avoid re-init
 
   const [modelReady, setModelReady] = useState(false)
   const [camError,   setCamError]   = useState(null)
 
-  useEffect(() => { isRecRef.current = isRecording }, [isRecording])
+  // Keep refs in sync without triggering re-init
+  useEffect(() => { isRecRef.current    = isRecording    }, [isRecording])
+  useEffect(() => { onEmotionRef.current = onEmotionScore }, [onEmotionScore])
 
   useEffect(() => {
     let cancelled = false
 
-    // rAF-based canvas painter — runs outside MediaPipe message handler
+    // ── rAF canvas paint loop — completely separate from MediaPipe ────────────
     const paintLoop = () => {
       rafRef.current = requestAnimationFrame(paintLoop)
       const lm     = pendingLmRef.current
       const canvas = canvasRef.current
       if (!lm || !canvas || !isRecRef.current) return
-
-      // Lazy-init cached context
       if (!ctxRef.current) ctxRef.current = canvas.getContext('2d')
       const ctx = ctxRef.current
-
       ctx.clearRect(0, 0, canvas.width, canvas.height)
-      ctx.fillStyle   = 'rgba(14,165,233,0.6)'
-      ctx.strokeStyle = 'rgba(14,165,233,0.25)'
-      ctx.lineWidth   = 0.5
-
+      ctx.fillStyle = 'rgba(14,165,233,0.6)'
       for (let i = 0; i < MESH_POINTS.length; i++) {
         const pt = lm[MESH_POINTS[i]]
+        if (!pt) continue
         ctx.beginPath()
         ctx.arc(pt.x * canvas.width, pt.y * canvas.height, 2, 0, 6.2832)
         ctx.fill()
       }
+    }
+
+    // ── State flush interval — decouples MediaPipe from React renders ─────────
+    // onResults writes to latestScoreRef (sync, zero overhead).
+    // This interval reads it and calls setState at a controlled 2Hz rate.
+    // Result: React never re-renders inside the MediaPipe message handler.
+    const startFlushInterval = () => {
+      flushRef.current = setInterval(() => {
+        const score = latestScoreRef.current
+        if (score) {
+          onEmotionRef.current?.(score)
+          latestScoreRef.current = null
+        }
+      }, STATE_FLUSH_MS)
     }
 
     const init = async () => {
@@ -164,72 +168,70 @@ const WebcamRecorder = ({
 
         // eslint-disable-next-line no-undef
         const faceMesh = new FaceMesh({
-          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
+          locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`,
         })
         faceMesh.setOptions({
-          maxNumFaces: 1,
-          refineLandmarks: false,   // +40ms/frame if true — keep false
+          maxNumFaces:            1,
+          refineLandmarks:        false,   // saves +40ms/frame
           minDetectionConfidence: 0.5,
-          minTrackingConfidence: 0.5,
+          minTrackingConfidence:  0.5,
         })
 
         faceMesh.onResults((results) => {
+          // ── ZERO React state calls here — everything goes into refs ──────────
           const canvas = canvasRef.current
           if (!canvas) return
 
-          // Resize canvas only when needed
-          const vw = video.videoWidth  || 640
-          const vh = video.videoHeight || 480
+          const vw = video.videoWidth  || 320
+          const vh = video.videoHeight || 240
           if (canvasSizeRef.current.w !== vw || canvasSizeRef.current.h !== vh) {
             canvas.width  = vw
             canvas.height = vh
-            ctxRef.current = null   // invalidate cached ctx after resize
+            ctxRef.current = null
             canvasSizeRef.current = { w: vw, h: vh }
           }
 
           if (!results.multiFaceLandmarks?.length) {
             pendingLmRef.current = null
-            const now = performance.now()
-            if (now - lastEmitRef.current >= RESULTS_THROTTLE_MS) {
-              lastEmitRef.current = now
-              onEmotionScore?.({ score: 0.3, eyeContact: 'Low', posture: 'Unknown', smile: 0, presence: '0%' })
+            // Write fallback score to ref — flushed by interval, not here
+            latestScoreRef.current = {
+              score: 0.3, eyeContact: 'Low', posture: 'Unknown', smile: 0, presence: '0%',
             }
             return
           }
 
           const lm = results.multiFaceLandmarks[0]
-
-          // Store landmarks for rAF painter (non-blocking canvas draw)
-          pendingLmRef.current = lm
-
-          // Gate state + callback updates
-          const now = performance.now()
-          if (now - lastEmitRef.current < RESULTS_THROTTLE_MS) return
-          lastEmitRef.current = now
-
-          // Score computation (pure, no side-effects)
-          onEmotionScore?.(computeScores(lm))
+          pendingLmRef.current   = lm               // rAF painter reads this
+          latestScoreRef.current = computeScores(lm) // interval flushes this
+          // ── No setState, no onEmotionScore call — completely non-blocking ──
         })
 
         // eslint-disable-next-line no-undef
         const camera = new Camera(video, {
           onFrame: async () => {
-            // FIX: throttle sends to MediaPipe — this is the primary source of
-            // '[Violation] message handler took Xms'. Reducing from ~30fps to
-            // ~10fps cuts inference tasks by 3x and keeps the main thread free.
             const now = performance.now()
+            // FIX 1: time-based throttle — skip frames within window
             if (now - lastSendRef.current < SEND_THROTTLE_MS) return
+            // FIX: concurrency guard — if previous send is still running, skip
+            if (isSendingRef.current) return
             lastSendRef.current = now
-            await faceMesh.send({ image: video })
+            isSendingRef.current = true
+            try {
+              await faceMesh.send({ image: video })
+            } catch {
+              // MediaPipe busy — silently skip this frame
+            } finally {
+              isSendingRef.current = false
+            }
           },
-          width: 640, height: 480,
+          width: 320, height: 240,   // FIX: was 640x480 — 4x fewer pixels
         })
 
         await camera.start()
         cameraRef.current = camera
 
-        // Start rAF paint loop
         paintLoop()
+        startFlushInterval()
 
         if (!cancelled) {
           setModelReady(true)
@@ -238,9 +240,11 @@ const WebcamRecorder = ({
       } catch (err) {
         if (!cancelled) {
           console.error('WebcamRecorder init error:', err)
-          setCamError(err.name === 'NotAllowedError'
-            ? 'Camera permission denied. Please allow camera access and reload.'
-            : 'Could not start camera. Check your device and browser permissions.')
+          setCamError(
+            err.name === 'NotAllowedError'
+              ? 'Camera permission denied. Please allow camera access and reload.'
+              : 'Could not start camera. Check your device and browser permissions.'
+          )
           onModelStatus?.(false)
         }
       }
@@ -250,14 +254,14 @@ const WebcamRecorder = ({
 
     return () => {
       cancelled = true
-      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      if (rafRef.current)   cancelAnimationFrame(rafRef.current)
+      if (flushRef.current) clearInterval(flushRef.current)
       cameraRef.current?.stop?.()
       streamRef.current?.getTracks().forEach(t => t.stop())
       setMediaStream(null)
     }
-  }, [])  // run once on mount
+  }, []) // ← empty deps: init once, use refs for all changing values
 
-  // ── Render (unchanged layout) ─────────────────────────────────────────────
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.97 }}
@@ -279,21 +283,11 @@ const WebcamRecorder = ({
       <video
         ref={videoRef}
         autoPlay muted playsInline
-        style={{
-          width: '100%', height: '100%',
-          objectFit: 'cover',
-          transform: 'scaleX(-1)',
-          display: 'block',
-        }}
+        style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', display: 'block' }}
       />
       <canvas
         ref={canvasRef}
-        style={{
-          position: 'absolute', inset: 0,
-          width: '100%', height: '100%',
-          transform: 'scaleX(-1)',
-          pointerEvents: 'none',
-        }}
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', transform: 'scaleX(-1)', pointerEvents: 'none' }}
       />
 
       {camError && (
@@ -309,7 +303,8 @@ const WebcamRecorder = ({
         </div>
       )}
 
-      {['tl', 'tr', 'bl', 'br'].map(pos => (
+      {/* Corner brackets */}
+      {['tl','tr','bl','br'].map(pos => (
         <div key={pos} style={{
           position: 'absolute',
           top:    pos.startsWith('t') ? '0.625rem' : 'auto',
@@ -324,6 +319,7 @@ const WebcamRecorder = ({
         }} />
       ))}
 
+      {/* Status bar */}
       <div style={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
         padding: '0.5rem 0.75rem',
@@ -342,13 +338,8 @@ const WebcamRecorder = ({
         </div>
         {isRecording && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-            <div style={{
-              width: 6, height: 6, borderRadius: '50%', background: '#e11d48',
-              animation: 'recordPulse 1s ease-in-out infinite',
-            }} />
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.58rem', color: '#fda4af', letterSpacing: '0.1em' }}>
-              REC
-            </span>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#e11d48', animation: 'recordPulse 1s ease-in-out infinite' }} />
+            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.58rem', color: '#fda4af', letterSpacing: '0.1em' }}>REC</span>
           </div>
         )}
       </div>

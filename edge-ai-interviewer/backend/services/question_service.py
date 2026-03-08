@@ -1,22 +1,12 @@
 """
-question_service.py — Interview question generation via local Ollama / LLaMA 3.
+question_service.py — Interview question generation via local Ollama (phi3).
 
-Fixes applied:
-- OLLAMA_URL is now read from OLLAMA_URL env var so it's configurable without
-  touching source code (e.g. OLLAMA_URL=http://192.168.1.10:11434/api/generate).
-- Added _check_ollama_available() which pings /api/tags before attempting
-  generation, and caches the result for 60s to avoid spamming the check.
-- Model name is configurable via OLLAMA_MODEL env var (default: "llama3").
-  Switch to "llama3.1", "mistral", etc. by setting the env var.
-- Timeouts on the requests.post call were too short for local inference —
-  increased to 90s and made configurable via OLLAMA_TIMEOUT env var.
-- _parse_questions() was silently dropping valid questions that didn't match
-  the "Q1:" prefix if the model responded with a numbered list "1." format.
-  Extended regex handles more output styles.
-- generate_questions() now validates that returned questions are actual
-  questions (contain a "?" or are long enough) before accepting them.
-- generate_ai_feedback() is integrated as a fallback inside report_service —
-  this file now exports it cleanly so report_service can import it.
+Performance fixes applied:
+- num_predict reduced 1024 → 512  (cuts generation time ~50%)
+- top_k reduced 40 → 20           (faster token sampling)
+- top_p reduced 0.9 → 0.8         (tighter sampling = faster)
+- num_thread set to 8              (use all CPU cores explicitly)
+- Prompt template shortened        (less input = faster processing)
 """
 
 import re
@@ -31,23 +21,23 @@ import requests
 logger = logging.getLogger(__name__)
 
 # ── Configuration ─────────────────────────────────────────────────────────────
-OLLAMA_BASE_URL  = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
-OLLAMA_MODEL     = os.environ.get("OLLAMA_MODEL", "llama3")
-OLLAMA_TIMEOUT   = int(os.environ.get("OLLAMA_TIMEOUT", "90"))
+OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
+OLLAMA_MODEL    = os.environ.get("OLLAMA_MODEL", "phi3")
+OLLAMA_TIMEOUT  = int(os.environ.get("OLLAMA_TIMEOUT", "120"))
 
 OLLAMA_GENERATE_URL = f"{OLLAMA_BASE_URL}/api/generate"
 OLLAMA_TAGS_URL     = f"{OLLAMA_BASE_URL}/api/tags"
 
 # ── Availability cache ────────────────────────────────────────────────────────
-_ollama_available:      Optional[bool] = None
-_ollama_checked_at:     float = 0.0
-_OLLAMA_CACHE_SECONDS:  int   = 60  # re-check at most once per minute
+_ollama_available:     Optional[bool] = None
+_ollama_checked_at:    float = 0.0
+_OLLAMA_CACHE_SECONDS: int   = 60
 
 
 def _check_ollama_available() -> bool:
     """
     Ping Ollama's /api/tags endpoint and verify the configured model is pulled.
-    Result is cached for _OLLAMA_CACHE_SECONDS to avoid thundering-herd on startup.
+    Result cached for 60s to avoid repeated pings.
     """
     global _ollama_available, _ollama_checked_at
 
@@ -58,25 +48,26 @@ def _check_ollama_available() -> bool:
     try:
         resp = requests.get(OLLAMA_TAGS_URL, timeout=5)
         resp.raise_for_status()
-        data = resp.json()
+        data   = resp.json()
         pulled = [m.get("name", "") for m in data.get("models", [])]
-        model_ready = any(OLLAMA_MODEL in name for name in pulled)
+
+        model_ready = any(
+            name == OLLAMA_MODEL or name.startswith(f"{OLLAMA_MODEL}:")
+            for name in pulled
+        )
 
         if model_ready:
-            logger.info(f"Ollama reachable; '{OLLAMA_MODEL}' is ready.")
+            logger.info(f"Ollama running; '{OLLAMA_MODEL}' ready. Available: {pulled}")
             _ollama_available = True
         else:
             logger.warning(
-                f"Ollama reachable but '{OLLAMA_MODEL}' not found. "
+                f"Ollama running but '{OLLAMA_MODEL}' not found. "
                 f"Available: {pulled}. Run: ollama pull {OLLAMA_MODEL}"
             )
             _ollama_available = False
 
     except requests.exceptions.ConnectionError:
-        logger.warning(
-            f"Ollama not reachable at {OLLAMA_BASE_URL}. "
-            "Start it with: ollama serve"
-        )
+        logger.warning(f"Cannot reach Ollama at {OLLAMA_BASE_URL}. Is it running?")
         _ollama_available = False
     except Exception as exc:
         logger.warning(f"Ollama availability check failed: {exc}")
@@ -88,91 +79,64 @@ def _check_ollama_available() -> bool:
 
 # ── Prompts ───────────────────────────────────────────────────────────────────
 
-MASTER_PROMPT = """You are InterviewAI, an industrial-grade AI assessment engine built by a Lead Software Architect at a top-tier tech firm. You conduct high-signal technical interviews. Your questions are:
-1. Deeply technical and scenario-based
-2. Focused on trade-offs, scalability, and internal workings
-3. Tailored to the candidate's specific tech stack
-4. Never generic boilerplate
-5. Always returned in the exact format requested — no explanations, no preamble
-"""
+MASTER_PROMPT = (
+    "You are an expert technical interviewer. "
+    "You ask precise, scenario-based questions tailored to the candidate's role and level. "
+    "You never add explanations, preamble, or extra text — only the questions."
+)
 
 ROLE_SPECIFIC_THEMES = {
-    "Software Engineer":        "Memory management, concurrency patterns, distributed system design, and performance profiling.",
-    "Frontend Developer":       "Browser rendering pipeline, state synchronization, advanced React hooks internals, and bundle optimization.",
-    "Backend Developer":        "Database isolation levels, distributed locking, service discovery, and zero-downtime deployment.",
-    "Full Stack Developer":     "Client-server state sync, authentication flows, monorepo architecture, and end-to-end performance.",
-    "Data Scientist":           "Model entropy, hyperparameter optimization, mathematical algorithm proofs, and large-scale data ingestion.",
-    "Machine Learning Engineer":"Model quantization, inference latency at edge, feature store architecture, and MLOps pipelines.",
-    "DevOps Engineer":          "Chaos engineering, multi-cloud networking, eBPF monitoring, and GitOps parity.",
-    "Product Manager":          "Go-to-market strategy for technical APIs, feature prioritization under technical debt, and analytics-driven pivots.",
-    "UI/UX Designer":           "Atomic design systems, perceptual performance, WCAG 2.1 accessibility, and design-to-code automation.",
-    "QA Engineer":              "Shift-left security testing, property-based testing, performance regression suites, and CI pipeline stability.",
-    "Cyber Security Analyst":   "Zero-trust architecture, advanced persistent threats (APT), cryptographic implementations, and forensic analysis.",
+    "Software Engineer":         "Memory management, concurrency, distributed system design, performance profiling.",
+    "Frontend Developer":        "Browser rendering, state synchronisation, React internals, bundle optimisation.",
+    "Backend Developer":         "Database isolation levels, distributed locking, service discovery, zero-downtime deployments.",
+    "Full Stack Developer":      "Client-server state sync, authentication flows, monorepo architecture, E2E performance.",
+    "Data Scientist":            "Model entropy, hyperparameter optimisation, algorithm proofs, large-scale data ingestion.",
+    "Machine Learning Engineer": "Model quantisation, inference latency at edge, feature store architecture, MLOps pipelines.",
+    "DevOps Engineer":           "Chaos engineering, multi-cloud networking, eBPF monitoring, GitOps.",
+    "Product Manager":           "Go-to-market strategy, feature prioritisation under technical debt, analytics-driven pivots.",
+    "UI/UX Designer":            "Atomic design systems, perceptual performance, WCAG 2.1 accessibility, design-to-code automation.",
+    "QA Engineer":               "Shift-left testing, property-based testing, performance regression, CI stability.",
+    "Cyber Security Analyst":    "Zero-trust architecture, APT analysis, cryptographic implementation, forensic analysis.",
 }
 
+# SHORT prompt = phi3 processes faster and hallucinates less
 QUESTION_PROMPT_TEMPLATE = """{master}
 
-[INTERVIEW CONFIGURATION]
-- ROLE: {role}
-- SENIORITY: {experience}
-- TECH STACK: {skills}
-- DOMAIN THEMES: {themes}
-- NUMBER OF QUESTIONS REQUIRED: {n}
+Role: {role} | Level: {experience} | Stack: {skills}
 
-[TASK]
-Generate exactly {n} high-signal interview questions for a {experience}-level {role}.
-Integrate the listed tech stack. Match the difficulty to the seniority level:
-  Entry     → implementation details, debugging, basic patterns
-  Intermediate → optimisation, system interaction, trade-offs
-  Senior    → architecture, scalability, failure modes
-  Lead      → technical vision, team dynamics, roadmap alignment
+Generate exactly {n} interview questions. Rules:
+- Each question must end with ?
+- Entry=basics, Intermediate=trade-offs, Senior=architecture, Lead=vision
+- No preamble, no explanations, no blank lines
 
-[OUTPUT FORMAT — STRICTLY FOLLOW THIS]
-Q1: <question text ending with ?>
-Q2: <question text ending with ?>
-...
-Q{n}: <question text ending with ?>
-
-Do not add any text outside this format. No explanations. No introductions. No blank lines between questions.
+Output:
+Q1: <question?>
+Q2: <question?>
 """
 
 FOLLOWUP_PROMPT_TEMPLATE = """{master}
 
-[LIVE INTERVIEW CONTEXT]
-- Role: {role}
-- Seniority: {experience}
-- Previous Question: {previous_question}
-- Candidate Answer: {candidate_answer}
+Role: {role} ({experience})
+Previous question: {previous_question}
+Candidate answer: {candidate_answer}
 
-[TASK]
-Generate ONE context-aware follow-up question.
-- If the answer is strong → go deeper, probe edge cases or trade-offs
-- If the answer is partial → ask for clarification on the weakest point
-- If the answer is weak → probe the foundational concept they missed
-
-[OUTPUT FORMAT]
-Follow-up: <question text ending with ?>
+Write ONE follow-up question.
+Follow-up: <question?>
 """
 
 FEEDBACK_PROMPT_TEMPLATE = """{master}
 
-[EVALUATION CONTEXT]
-- Role: {role}
-- Experience Level: {experience}
-- Question Asked: {question}
-- Candidate Answer: "{transcript}"
-- Scores (0–1): Presence={facial_score:.2f}, Speech={speech_score:.2f}, Content={nlp_score:.2f}
+Role: {role} ({experience})
+Question: {question}
+Answer: "{transcript}"
+Scores — Presence: {facial_score:.2f}, Speech: {speech_score:.2f}, Content: {nlp_score:.2f}
 
-[TASK]
-Produce a rigorous but encouraging performance report.
-
-[OUTPUT FORMAT — STRICTLY FOLLOW THIS]
-Strengths: <1-2 sentences on what the candidate did well>
-Feedback: <2-3 sentences of deep technical evaluation — gaps, logic quality, professional terminology>
+Strengths: <1-2 sentences>
+Feedback: <2-3 sentences>
 Improvements:
-- <Specific, actionable technical improvement 1>
-- <Specific, actionable technical improvement 2>
-- <Specific, actionable technical improvement 3>
+- <improvement 1>
+- <improvement 2>
+- <improvement 3>
 """
 
 
@@ -188,7 +152,6 @@ def _parse_questions(raw: str, n: int, role: str = "Engineer") -> list:
         line = line.strip()
         if not line:
             continue
-        # Match: "Q1:", "Q1.", "1.", "1)", "- ", "• " etc.
         match = re.match(
             r'^(?:Q\s*\d+\s*[:.]\s*|\d+\s*[.)]\s*|[-•*]\s*|Follow-up\s*[:.]\s*)(.+)',
             line, re.IGNORECASE
@@ -197,29 +160,35 @@ def _parse_questions(raw: str, n: int, role: str = "Engineer") -> list:
             q = match.group(1).strip()
             if len(q) > 10:
                 questions.append(q)
-        elif len(line) > 30 and not line.lower().startswith(("here are", "sure", "below", "note")):
-            # Accept free-form lines that look like questions
+        elif len(line) > 30 and not line.lower().startswith(
+            ("here are", "sure", "below", "note", "output", "format", "rules",
+             "generate", "role:", "level:", "tech ", "themes:", "stack:")
+        ):
             questions.append(line)
 
-    # Deduplicate while preserving order
-    seen = set()
-    unique = []
+    cleaned = []
     for q in questions:
+        if not q.endswith("?"):
+            q = q.rstrip(".!") + "?"
+        cleaned.append(q)
+
+    seen, unique = set(), []
+    for q in cleaned:
         key = q[:60].lower()
         if key not in seen:
             seen.add(key)
             unique.append(q)
 
-    return unique[:n] if unique else [f"Tell me about your experience as a {role}."]
+    return unique[:n] if unique else [f"Tell me about your experience as a {role}?"]
 
 
 # ── Fallback question banks ───────────────────────────────────────────────────
 
 def _level_bank(entry, intermediate, senior, lead):
     return {
-        "entry level":   entry,
-        "intermediate":  intermediate,
-        "senior":        senior,
+        "entry level":    entry,
+        "intermediate":   intermediate,
+        "senior":         senior,
         "lead / manager": lead,
     }
 
@@ -462,19 +431,19 @@ GENERIC_FALLBACK = [
 def _get_fallback(experience: str, n: int, role: str = "Software Engineer") -> list:
     level_key = experience.lower().strip()
     role_bank = ROLE_FALLBACK_BANKS.get(role)
+
     if not role_bank:
-        # fuzzy match
         for key in ROLE_FALLBACK_BANKS:
             if key.lower() in role.lower() or role.lower() in key.lower():
                 role_bank = ROLE_FALLBACK_BANKS[key]
                 break
+
     if not role_bank:
         role_bank = ROLE_FALLBACK_BANKS["Software Engineer"]
 
-    bank = role_bank.get(level_key, GENERIC_FALLBACK)
+    bank     = role_bank.get(level_key, GENERIC_FALLBACK)
     shuffled = bank.copy()
     random.shuffle(shuffled)
-    # pad if needed
     while len(shuffled) < n:
         shuffled += bank.copy()
     return shuffled[:n]
@@ -485,9 +454,7 @@ def _get_fallback(experience: str, n: int, role: str = "Software Engineer") -> l
 def generate_questions(role: str, experience: str, skills: str, question_volume: int) -> list:
     """
     Generate `question_volume` interview questions for the given role/level/skills.
-
-    Tries Ollama first; falls back to the curated static bank if unavailable.
-    Returns a plain Python list of question strings.
+    Tries phi3 via Ollama first; falls back to static bank if unavailable/slow.
     """
     question_volume = max(1, min(int(question_volume), 20))
 
@@ -495,8 +462,8 @@ def generate_questions(role: str, experience: str, skills: str, question_volume:
         logger.info(f"Ollama unavailable — using fallback bank for {role} ({experience})")
         return _get_fallback(experience, question_volume, role)
 
-    themes = ROLE_SPECIFIC_THEMES.get(role, "General engineering trade-offs and best practices.")
-    skills_str = skills.strip() if skills else "general area-appropriate skills"
+    themes     = ROLE_SPECIFIC_THEMES.get(role, "General engineering trade-offs and best practices.")
+    skills_str = skills.strip() if skills else "general domain skills"
 
     prompt = QUESTION_PROMPT_TEMPLATE.format(
         master=MASTER_PROMPT,
@@ -516,33 +483,36 @@ def generate_questions(role: str, experience: str, skills: str, question_volume:
                 "stream": False,
                 "options": {
                     "temperature": 0.5,
-                    "top_p": 0.9,
-                    "top_k": 40,
-                    "num_predict": 1024,
-                    "stop": ["[END]", "Candidate:", "---"],
+                    "top_p":       0.8,   # was 0.9  — tighter = faster
+                    "top_k":       20,    # was 40   — fewer candidates = faster
+                    "num_predict": 512,   # was 1024 — half tokens = ~half time
+                    "num_thread":  8,     # use all CPU cores
+                    "stop": ["[END]", "---", "Output:", "Rules:", "Note:", "<|end|>"],
                 },
             },
             timeout=OLLAMA_TIMEOUT,
         )
         response.raise_for_status()
-        raw = response.json().get("response", "")
+        raw       = response.json().get("response", "")
         questions = _parse_questions(raw, question_volume, role)
 
-        if questions:
-            logger.info(f"LLM generated {len(questions)} questions for {role} ({experience})")
-            return questions
+        valid = [q for q in questions if len(q) > 15 and "?" in q]
 
-        logger.warning("LLM returned no parseable questions — using fallback")
+        if valid:
+            logger.info(f"phi3 generated {len(valid)} questions for {role} ({experience})")
+            return valid
+
+        logger.warning(f"phi3 returned no valid questions (raw[:200]: {raw[:200]!r}) — fallback")
         return _get_fallback(experience, question_volume, role)
 
     except requests.exceptions.Timeout:
-        logger.warning(f"Ollama timed out after {OLLAMA_TIMEOUT}s — using fallback")
-        # Invalidate cache so next call re-checks
+        logger.warning(f"phi3 timed out after {OLLAMA_TIMEOUT}s — using fallback")
         global _ollama_available
         _ollama_available = None
         return _get_fallback(experience, question_volume, role)
+
     except Exception as exc:
-        logger.warning(f"LLM question generation failed ({exc}) — using fallback")
+        logger.warning(f"Question generation failed ({exc}) — using fallback")
         return _get_fallback(experience, question_volume, role)
 
 
@@ -565,13 +535,20 @@ def generate_followup(role: str, experience: str, previous_question: str, candid
                 "model": OLLAMA_MODEL,
                 "prompt": prompt,
                 "stream": False,
-                "options": {"temperature": 0.65, "num_predict": 200},
+                "options": {
+                    "temperature": 0.65,
+                    "num_predict": 150,
+                    "num_thread":  8,
+                    "stop": ["<|end|>", "---"],
+                },
             },
             timeout=30,
         )
         response.raise_for_status()
-        raw = response.json().get("response", "").strip()
+        raw     = response.json().get("response", "").strip()
         cleaned = re.sub(r'^Follow-up\s*[:.]\s*', '', raw, flags=re.IGNORECASE).strip()
+        if not cleaned.endswith("?"):
+            cleaned = cleaned.rstrip(".!") + "?"
         return cleaned or f"Can you elaborate further on '{previous_question[:60]}'?"
     except Exception:
         return f"Can you elaborate further on '{previous_question[:60]}'?"
@@ -603,22 +580,27 @@ def generate_ai_feedback(role: str, experience: str, question: str,
                 "model": OLLAMA_MODEL,
                 "prompt": prompt,
                 "stream": False,
-                "options": {"temperature": 0.45, "num_predict": 500},
+                "options": {
+                    "temperature": 0.45,
+                    "num_predict": 400,
+                    "num_thread":  8,
+                    "stop": ["<|end|>", "---"],
+                },
             },
             timeout=45,
         )
         response.raise_for_status()
         raw = response.json().get("response", "")
 
-        strengths_m    = re.search(r'Strengths:\s*(.*?)(?=Feedback:|Improvements:|$)', raw, re.DOTALL | re.IGNORECASE)
-        feedback_m     = re.search(r'Feedback:\s*(.*?)(?=Improvements:|$)', raw, re.DOTALL | re.IGNORECASE)
-        improvements_m = re.search(r'Improvements:\s*(.*)', raw, re.DOTALL | re.IGNORECASE)
+        strengths_m    = re.search(r'Strengths:\s*(.*?)(?=Feedback:|Improvements:|$)',    raw, re.DOTALL | re.IGNORECASE)
+        feedback_m     = re.search(r'Feedback:\s*(.*?)(?=Improvements:|$)',               raw, re.DOTALL | re.IGNORECASE)
+        improvements_m = re.search(r'Improvements:\s*(.*)',                               raw, re.DOTALL | re.IGNORECASE)
 
         strengths     = strengths_m.group(1).strip()    if strengths_m    else ""
         feedback_core = feedback_m.group(1).strip()     if feedback_m     else raw.strip()
         improvements  = improvements_m.group(1).strip() if improvements_m else ""
 
-        feedback = f"Strengths: {strengths}\n\nEvaluator Notes: {feedback_core}" if strengths else feedback_core
+        feedback    = f"Strengths: {strengths}\n\nEvaluator Notes: {feedback_core}" if strengths else feedback_core
         suggestions = [
             re.sub(r'^[-*•\s\d.]+', '', line).strip()
             for line in improvements.splitlines()

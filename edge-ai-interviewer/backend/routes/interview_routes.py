@@ -264,8 +264,6 @@ def analyze_chunk(user_id):
         "facial": facial_result.get("facial_score"),
         "speech": speech_result.get("speech_score"),
     }), 200
-
-
 @interview_bp.get("/history")
 @token_required
 def get_history(user_id):
