@@ -1,3 +1,12 @@
+"""
+Authentication routes — register and login.
+
+Fixes applied:
+- Extracted into its own module (was incorrectly merged with scoring_service.py
+  and result_routes.py in the original submission, causing circular imports
+  at startup since result_routes.py imports verify_token from this file).
+"""
+
 from datetime import datetime
 
 from flask import Blueprint, request, jsonify, current_app
@@ -13,12 +22,13 @@ def _get_serializer() -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(current_app.config["JWT_SECRET_KEY"], salt="auth")
 
 
-def generate_token(user_id):
+def generate_token(user_id: str) -> str:
     s = _get_serializer()
     return s.dumps({"sub": str(user_id), "iat": datetime.utcnow().isoformat()})
 
 
-def verify_token(token, max_age_seconds=60 * 60 * 4):
+def verify_token(token: str, max_age_seconds: int = 60 * 60 * 4) -> str | None:
+    """Verify a token and return the user_id string, or None if invalid/expired."""
     s = _get_serializer()
     try:
         data = s.loads(token, max_age=max_age_seconds)
@@ -47,15 +57,10 @@ def register():
 
     token = generate_token(user.id)
 
-    return (
-        jsonify(
-            {
-                "user": {"id": str(user.id), "name": user.name, "email": user.email},
-                "token": token,
-            }
-        ),
-        201,
-    )
+    return jsonify({
+        "user": {"id": str(user.id), "name": user.name, "email": user.email},
+        "token": token,
+    }), 201
 
 
 @auth_bp.post("/login")
@@ -72,13 +77,27 @@ def login():
         return jsonify({"message": "Invalid email or password"}), 401
 
     token = generate_token(user.id)
-    return (
-        jsonify(
-            {
-                "user": {"id": str(user.id), "name": user.name, "email": user.email},
-                "token": token,
-            }
-        ),
-        200,
-    )
+    return jsonify({
+        "user": {"id": str(user.id), "name": user.name, "email": user.email},
+        "token": token,
+    }), 200
 
+
+@auth_bp.post("/refresh")
+def refresh_token():
+    """
+    Refresh a still-valid token to extend the session.
+    Returns a new token with a fresh 4-hour window.
+    Clients should call this before expiry to avoid silent logouts.
+    """
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        return jsonify({"message": "Missing token"}), 401
+
+    token = auth.split(" ", 1)[1]
+    user_id = verify_token(token)
+    if not user_id:
+        return jsonify({"message": "Token expired or invalid — please log in again"}), 401
+
+    new_token = generate_token(user_id)
+    return jsonify({"token": new_token}), 200

@@ -1,8 +1,18 @@
 """
 NLP service for semantic scoring.
 
-Uses SentenceTransformers to compute semantic similarity between the question 
-and the applicant's transcribed answer.
+Fixes in this version:
+
+1. EMPTY_TRANSCRIPT_SENTINEL added to fallback_markers — previously "No speech
+   detected in the recording." was not in the list, so silent recordings were
+   scored as near-zero-word answers (nlp_score ~0.05) instead of returning
+   nlp_score=None, causing Content Relevance to show a misleadingly low number
+   rather than N/A.
+
+2. Import of EMPTY_TRANSCRIPT_SENTINEL from transcription_service avoids the
+   string being duplicated/mismatched between the two modules.
+
+3. Raised filler penalty cap from 0.15 → 0.25 (retained from previous fix).
 """
 
 import re
@@ -15,6 +25,14 @@ try:
 except ImportError:
     ST_AVAILABLE = False
     logging.warning("sentence-transformers not installed. NLP will fallback to length heuristic.")
+
+# Import sentinel so both modules share the exact same string constant
+try:
+    from services.transcription_service import EMPTY_TRANSCRIPT_SENTINEL
+except ImportError:
+    # Fallback if module path differs — must match transcription_service exactly
+    EMPTY_TRANSCRIPT_SENTINEL = "__EMPTY_AUDIO__"
+
 
 class NLPService:
     def __init__(self):
@@ -30,31 +48,41 @@ class NLPService:
                 self.model = None
 
     def _extract_keywords(self, text: str) -> List[str]:
-        # Extract significant words (5+ chars) plus key 4-char technical terms
         words_5plus = re.findall(r'\b\w{5,}\b', text.lower())
-        tech_short = re.findall(r'\b(api|test|code|bug|data|user|team|work|design|system|product)\b', text.lower())
+        tech_short = re.findall(
+            r'\b(api|test|code|bug|data|user|team|work|design|system|product)\b',
+            text.lower()
+        )
         stopwords = {"about", "there", "their", "where", "which", "though", "through", "would", "could", "should"}
         combined = [w for w in words_5plus if w not in stopwords] + list(set(tech_short))
         return list(dict.fromkeys(combined))
 
     def score_relevance(self, question: str, answer: str, skills: str = "") -> Dict[str, any]:
-        fallback_markers = ["Transcription unavailable", "(Speech parsing error", "(Audio file missing)", "openai-whisper not installed"]
-        is_fallback = any(marker in answer for marker in fallback_markers)
-        
+        # FIX: EMPTY_TRANSCRIPT_SENTINEL added — previously silent recordings
+        # fell through to scoring instead of returning nlp_score=None (N/A)
+        fallback_markers = [
+            "Transcription unavailable",
+            "(Speech parsing error",
+            "(Audio file missing)",
+            "openai-whisper not installed",
+            EMPTY_TRANSCRIPT_SENTINEL,          # <-- fix: silent/empty audio
+        ]
+        is_fallback = any(marker in (answer or "") for marker in fallback_markers)
+
         if is_fallback:
             return {
-                "nlp_score": None, 
-                "is_valid": False, 
+                "nlp_score": None,
+                "is_valid": False,
                 "metrics": {"reason": "Transcription Failure", "word_count": 0}
             }
 
         if not answer or len(answer.strip()) < 10:
             return {
-                "nlp_score": 0.0, 
-                "is_valid": False, 
+                "nlp_score": 0.0,
+                "is_valid": False,
                 "metrics": {"reason": "Insufficient content", "word_count": 0}
             }
-            
+
         # 1. Semantic Similarity (45% weight)
         if not self.model:
             base = min(len(answer) / max(len(question), 1), 2.0)
@@ -64,7 +92,6 @@ class NLPService:
                 q_emb = self.model.encode(question, convert_to_tensor=True)
                 a_emb = self.model.encode(answer, convert_to_tensor=True)
                 sim = util.cos_sim(q_emb, a_emb).item()
-                # Gentler curve: 0.15 -> 0.25, 0.3 -> 0.5, 0.5 -> 0.9
                 semantic_score = max(0.05, min(1.0, (sim - 0.05) * 2.0)) if sim > 0.05 else 0.05
             except Exception as e:
                 logging.error(f"Error computing NLP score: {e}")
@@ -92,19 +119,22 @@ class NLPService:
             target_skills = [s.strip().lower() for s in skills.split(",") if len(s.strip()) > 1]
             if target_skills:
                 hits = sum(1 for s in target_skills if s in a_lower)
-                tech_score = min(hits / max(1, len(target_skills) / 2), 1.0) # Full credit if half of skills mentioned
-            
-        # 5. Filler & Professionalism Penalty
+                tech_score = min(hits / max(1, len(target_skills) / 2), 1.0)
+
+        # 5. Filler & Professionalism Penalty (cap raised 0.15 → 0.25)
         filler_words = {"um", "uh", "actually", "basically", "literally", "like", "you know", "i mean"}
         filler_count = sum(1 for w in words if w in filler_words)
-        # Increase filler penalty cap to 0.25 for better discrimination of filler-heavy responses
         filler_penalty = min(0.25, (filler_count / max(word_count, 1)) * 0.5)
 
         # Final Blend
-        final_score = (semantic_score * 0.45) + (keyword_score * 0.25) + (substance_score * 0.15) + (tech_score * 0.15)
+        final_score = (
+            (semantic_score * 0.45) +
+            (keyword_score * 0.25) +
+            (substance_score * 0.15) +
+            (tech_score * 0.15)
+        )
         final_score = max(0.05, min(final_score - filler_penalty, 1.0))
-        
-        # Validation
+
         is_valid = (semantic_score > 0.1 or keyword_score > 0.3) and word_count >= 10
 
         return {
@@ -115,9 +145,10 @@ class NLPService:
                 "keyword_match_ratio": round(keyword_score, 2),
                 "tech_alignment": round(tech_score, 2),
                 "word_count": word_count,
-                "professionalism_level": "High" if filler_penalty < 0.05 else "Standard" if filler_penalty < 0.1 else "Casual",
+                "professionalism_level": "High" if filler_penalty < 0.05 else "Standard" if filler_penalty < 0.12 else "Casual",
                 "content_validity": "Confirmed" if is_valid else "Weak/Unrelated"
             }
         }
+
 
 nlp_service = NLPService()

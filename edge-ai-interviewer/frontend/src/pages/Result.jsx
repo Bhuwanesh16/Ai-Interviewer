@@ -1,11 +1,10 @@
 import { useLocation, useParams, useNavigate } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import RadarChart from '../components/RadarChart'
 import { fetchResult } from '../services/api'
 
 const ScoreMeter = ({ label, score, color, glow, delay = 0 }) => {
-  // if score is null/undefined we treat it as disabled (e.g. transcription failure)
   const pct = score != null ? Math.round(score * 100) : null
   return (
     <motion.div
@@ -73,29 +72,49 @@ const Result = () => {
   const [sessionPosition, setSessionPosition] = useState('')
   const [loadingResult, setLoadingResult] = useState(true)
   const [fetchError, setFetchError] = useState(false)
-
-  // Displayed scores for the score meters (averaged across all responses, or from nav state)
-  const [scores, setScores] = useState(location.state?.scores || { facial: 0, speech: 0, nlp: 0, final: 0 })
-  const [transcript, setTranscript] = useState(location.state?.transcript || '')
-  const [feedback, setFeedback] = useState(location.state?.feedback || '')
-  const [suggestions, setSuggestions] = useState(location.state?.suggestions || [])
-  const [metrics, setMetrics] = useState(location.state?.metrics || {})
-
-  // Holistic session summary
   const [sessionSummary, setSessionSummary] = useState(null)
   const [selectedQuestionIdx, setSelectedQuestionIdx] = useState(0)
 
-  const isTranscriptUnavailable = typeof transcript === 'string' && transcript.toLowerCase().includes('transcription unavailable')
+  // Averaged scores across all responses (for radar/meters)
+  const [scores, setScores] = useState(
+    location.state?.scores || { facial: 0, speech: 0, nlp: 0, final: 0 }
+  )
 
+  // ── FIXED: derive per-question details directly from allResponses + selectedQuestionIdx
+  // instead of storing them in separate state (which caused the infinite loop via the
+  // second useEffect calling setState on every render).
+  const selectedResponse = allResponses[selectedQuestionIdx] ?? null
+
+  const transcript = selectedResponse?.transcript
+    ?? location.state?.transcript
+    ?? ''
+  const feedback = selectedResponse?.feedback
+    ?? location.state?.feedback
+    ?? ''
+  const suggestions = selectedResponse?.suggestions
+    ?? location.state?.suggestions
+    ?? []
+  const metrics = selectedResponse?.metrics
+    ?? location.state?.metrics
+    ?? {}
+
+  const isTranscriptUnavailable =
+    typeof transcript === 'string' &&
+    transcript.toLowerCase().includes('transcription unavailable')
+
+  // Single useEffect — only loads data once when sessionId changes
   useEffect(() => {
     if (!sessionId) return
+    let cancelled = false
+
     const load = async () => {
       try {
         setLoadingResult(true)
         setFetchError(false)
         const { data } = await fetchResult(sessionId)
-        const responses = data.responses || []
+        if (cancelled) return
 
+        const responses = data.responses || []
         setAllResponses(responses)
         setSessionPosition(data.position || '')
         setSessionSummary(data.session_summary || null)
@@ -105,15 +124,8 @@ const Result = () => {
         }
 
         if (responses.length > 0) {
-          // Compute averaged scores for the RADAR/METERS (overall performance).
-          // Treat `null`/`undefined` as missing so we don't skew the chart when one
-          // or more signals are absent (e.g. no transcript).  If *all* values for a
-          // given key are missing we return null instead of 0 so the meter can
-          // display "N/A".
           const avg = (key) => {
-            const vals = responses
-              .map(r => r[key])
-              .filter(v => v != null)
+            const vals = responses.map(r => r[key]).filter(v => v != null)
             if (vals.length === 0) return null
             return vals.reduce((a, b) => a + b, 0) / vals.length
           }
@@ -123,40 +135,24 @@ const Result = () => {
             nlp: avg('nlp_score'),
             final: data.overall_score != null ? data.overall_score : avg('final_score') || 0,
           })
-
-          // Initial selection
-          const initial = responses[0]
-          setTranscript(initial.transcript || '')
-          setFeedback(initial.feedback || '')
-          setSuggestions(initial.suggestions || [])
-          setMetrics(initial.metrics || {})
         }
       } catch (err) {
-        console.error('Failed to load result', err)
-        setFetchError(true)
+        if (!cancelled) {
+          console.error('Failed to load result', err)
+          setFetchError(true)
+        }
       } finally {
-        setLoadingResult(false)
+        if (!cancelled) setLoadingResult(false)
       }
     }
+
     load()
-  }, [sessionId])
+    return () => { cancelled = true }
+  }, [sessionId]) // ← only sessionId; no derived state deps that could loop
 
-  // Update detail view when question selection changes
-  useEffect(() => {
-    if (allResponses.length > selectedQuestionIdx) {
-      const q = allResponses[selectedQuestionIdx]
-      setTranscript(q.transcript || '')
-      setFeedback(q.feedback || '')
-      setSuggestions(q.suggestions || [])
-      setMetrics(q.metrics || {})
-    }
-  }, [selectedQuestionIdx, allResponses])
-
-  // Use session overall_score if available, otherwise fall back to last question's final score
   const displayScore = sessionOverallScore != null
     ? Math.round(sessionOverallScore * 100)
     : Math.round((scores.final || 0) * 100)
-  const finalPct = Math.round((scores.final || 0) * 100)
   const scoreColor = displayScore >= 80 ? '#10b981' : displayScore >= 60 ? '#0ea5e9' : '#f43f5e'
   const scoreGlow = displayScore >= 80 ? 'rgba(16,185,129,0.3)' : displayScore >= 60 ? 'rgba(14,165,233,0.3)' : 'rgba(244,63,94,0.3)'
 
@@ -179,6 +175,36 @@ const Result = () => {
         <span style={{ fontSize: '0.875rem', color: '#64748b', fontFamily: "'DM Sans', sans-serif" }}>
           Loading your results…
         </span>
+      </div>
+    )
+  }
+
+  if (fetchError) {
+    return (
+      <div style={{
+        maxWidth: 1100, margin: '0 auto', padding: '4rem 1.5rem',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        minHeight: '60vh', gap: '1rem',
+      }}>
+        <p style={{ fontSize: '1rem', color: '#f43f5e', fontFamily: "'Syne', sans-serif", fontWeight: 700 }}>
+          Could not load results
+        </p>
+        <p style={{ fontSize: '0.875rem', color: '#64748b', fontFamily: "'DM Sans', sans-serif", textAlign: 'center', maxWidth: 400 }}>
+          The backend returned a CORS or network error. Make sure your Flask server is running and
+          has <code>CORS(app)</code> configured with <code>supports_credentials=True</code> and your
+          frontend origin allowed.
+        </p>
+        <button
+          onClick={() => navigate('/')}
+          style={{
+            padding: '0.6rem 1.25rem', borderRadius: '99px',
+            background: 'linear-gradient(135deg, #0ea5e9, #0284c7)',
+            color: '#fff', border: 'none', cursor: 'pointer',
+            fontFamily: "'DM Sans', sans-serif", fontWeight: 700, fontSize: '0.875rem',
+          }}
+        >
+          ← Back to home
+        </button>
       </div>
     )
   }
@@ -219,7 +245,6 @@ const Result = () => {
           </p>
         </div>
 
-        {/* Final score badge */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -295,12 +320,7 @@ const Result = () => {
               }}>
                 Content analysis disabled
               </p>
-              <p style={{
-                fontSize: '0.8rem',
-                color: '#475569',
-                lineHeight: 1.6,
-                margin: 0,
-              }}>
+              <p style={{ fontSize: '0.8rem', color: '#475569', lineHeight: 1.6, margin: 0 }}>
                 Transcription is unavailable, so content relevance cannot be scored. Enable Whisper in the backend environment and retry.
               </p>
               <p style={{
@@ -359,7 +379,7 @@ const Result = () => {
             gap: '1.25rem',
           }}
         >
-          {/* Holistic Session Summary (only if multiple questions) */}
+          {/* Holistic Session Summary */}
           {sessionSummary && allResponses.length > 1 && (
             <div style={{
               background: 'rgba(14,165,233,0.04)',
@@ -386,7 +406,7 @@ const Result = () => {
             </div>
           )}
 
-          {/* Header */}
+          {/* Header + Question Selector */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
             <p style={{
               fontFamily: "'JetBrains Mono', monospace",
@@ -397,9 +417,8 @@ const Result = () => {
               margin: 0,
             }}>{allResponses.length > 1 ? 'Detailed Question Report' : 'AI Performance Report'}</p>
 
-            {/* Question Selector (Pills) */}
             {allResponses.length > 1 && (
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem', flexWrap: 'wrap' }}>
                 {allResponses.map((_, idx) => (
                   <button
                     key={idx}
@@ -424,14 +443,11 @@ const Result = () => {
               </div>
             )}
 
-            {/* Verdict badge — only shown when real verdict present */}
             {metrics.verdict && (() => {
               const v = metrics.verdict
               const isOutstanding = v.includes('Outstanding')
               const isProfessional = v.includes('Professional')
               const isDeveloping = v.includes('Developing')
-              const isTechnical = v.includes('Technical')
-              const isNonResponsive = v.includes('Non-Responsive')
               const bg = isOutstanding ? 'rgba(16,185,129,0.1)'
                 : isProfessional ? 'rgba(14,165,233,0.1)'
                   : isDeveloping ? 'rgba(245,158,11,0.1)'
@@ -458,7 +474,7 @@ const Result = () => {
             })()}
           </div>
 
-          {/* Feedback text — structured as evaluator notes */}
+          {/* Feedback */}
           {feedback ? (
             <div style={{
               borderLeft: '3px solid #0ea5e9',
@@ -489,14 +505,13 @@ const Result = () => {
             }}>No feedback available for this session.</p>
           )}
 
-          {/* Metrics grid — only renders cells with real data */}
+          {/* Metrics grid */}
           {(() => {
             const wc = metrics.word_count
             const pace = metrics.speaking_rate
             const clarity = metrics.clarity_rating
             const validity = metrics.content_validity
             const ec = metrics.eye_contact
-            const bl = metrics.body_language
             const conf = metrics.confidence_level
 
             const cells = []
@@ -510,7 +525,6 @@ const Result = () => {
                 </div>
               )
             }
-
             if (ec && ec !== 'N/A') {
               const eclr = ec === 'High' ? '#10b981' : ec === 'Good' ? '#0ea5e9' : '#f59e0b'
               cells.push(
@@ -520,7 +534,6 @@ const Result = () => {
                 </div>
               )
             }
-
             if (conf && conf !== 'N/A') {
               const cclr = conf === 'Confident' ? '#10b981' : conf === 'Steady' ? '#0ea5e9' : '#f59e0b'
               cells.push(
@@ -530,7 +543,6 @@ const Result = () => {
                 </div>
               )
             }
-
             if (pace && pace !== 'Unknown') {
               const pclr = pace === 'Optimal' || pace === 'Fluid' ? '#10b981' : pace === 'Moderate' ? '#0ea5e9' : '#f59e0b'
               cells.push(
@@ -540,7 +552,6 @@ const Result = () => {
                 </div>
               )
             }
-
             if (clarity && clarity !== 'Unknown') {
               const cclr = clarity === 'High' || clarity === 'Excellent' ? '#10b981' : clarity === 'Moderate' || clarity === 'Professional' ? '#0ea5e9' : '#f43f5e'
               cells.push(
@@ -550,7 +561,6 @@ const Result = () => {
                 </div>
               )
             }
-
             if (validity && validity !== 'N/A') {
               const vclr = validity === 'Confirmed' ? '#10b981' : validity === 'Weak/Unrelated' ? '#f43f5e' : '#f59e0b'
               cells.push(
@@ -562,7 +572,6 @@ const Result = () => {
             }
 
             if (cells.length === 0) return null
-
             return (
               <div style={{
                 display: 'grid',
@@ -601,7 +610,7 @@ const Result = () => {
           }}>Personalized Improvements</p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {suggestions.map((tip, i) => (
+            {suggestions.length > 0 ? suggestions.map((tip, i) => (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, x: 10 }}
@@ -618,17 +627,17 @@ const Result = () => {
                   flexShrink: 0,
                   marginTop: 2,
                 }}>
-                  <span style={{
-                    fontSize: '0.55rem',
-                    fontFamily: "'JetBrains Mono', monospace",
-                    color: '#0ea5e9',
-                  }}>{i + 1}</span>
+                  <span style={{ fontSize: '0.55rem', fontFamily: "'JetBrains Mono', monospace", color: '#0ea5e9' }}>{i + 1}</span>
                 </div>
                 <p style={{ fontSize: '0.8375rem', color: '#475569', lineHeight: 1.65, fontFamily: "'DM Sans', sans-serif" }}>
                   {tip}
                 </p>
               </motion.div>
-            ))}
+            )) : (
+              <p style={{ fontSize: '0.85rem', color: '#94a3b8', fontStyle: 'italic', fontFamily: "'DM Sans', sans-serif" }}>
+                No suggestions available.
+              </p>
+            )}
           </div>
 
           <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
@@ -636,27 +645,14 @@ const Result = () => {
               onClick={() => navigate('/')}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
-                padding: '0.5rem 1rem',
-                borderRadius: '99px',
-                border: '1px solid rgba(148,163,184,0.3)',
-                background: 'rgba(255,255,255,0.9)',
-                color: '#64748b',
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: '0.75rem', fontWeight: 500,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                padding: '0.5rem 1rem', borderRadius: '99px',
+                border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.9)',
+                color: '#64748b', fontFamily: "'DM Sans', sans-serif",
+                fontSize: '0.75rem', fontWeight: 500, cursor: 'pointer',
+                transition: 'all 0.2s ease', boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
               }}
-              onMouseEnter={e => {
-                e.currentTarget.style.borderColor = 'rgba(14,165,233,0.4)'
-                e.currentTarget.style.color = '#0ea5e9'
-                e.currentTarget.style.background = 'rgba(14,165,233,0.06)'
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.borderColor = 'rgba(148,163,184,0.3)'
-                e.currentTarget.style.color = '#64748b'
-                e.currentTarget.style.background = 'rgba(255,255,255,0.9)'
-              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(14,165,233,0.4)'; e.currentTarget.style.color = '#0ea5e9'; e.currentTarget.style.background = 'rgba(14,165,233,0.06)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(148,163,184,0.3)'; e.currentTarget.style.color = '#64748b'; e.currentTarget.style.background = 'rgba(255,255,255,0.9)' }}
             >
               ← Back to home
             </button>
@@ -664,27 +660,14 @@ const Result = () => {
               onClick={() => window.print()}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
-                padding: '0.5rem 1rem',
-                borderRadius: '99px',
-                border: '1px solid rgba(148,163,184,0.3)',
-                background: 'rgba(255,255,255,0.9)',
-                color: '#64748b',
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: '0.75rem', fontWeight: 500,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                padding: '0.5rem 1rem', borderRadius: '99px',
+                border: '1px solid rgba(148,163,184,0.3)', background: 'rgba(255,255,255,0.9)',
+                color: '#64748b', fontFamily: "'DM Sans', sans-serif",
+                fontSize: '0.75rem', fontWeight: 500, cursor: 'pointer',
+                transition: 'all 0.2s ease', boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
               }}
-              onMouseEnter={e => {
-                e.currentTarget.style.borderColor = 'rgba(14,165,233,0.4)'
-                e.currentTarget.style.color = '#0ea5e9'
-                e.currentTarget.style.background = 'rgba(14,165,233,0.06)'
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.borderColor = 'rgba(148,163,184,0.3)'
-                e.currentTarget.style.color = '#64748b'
-                e.currentTarget.style.background = 'rgba(255,255,255,0.9)'
-              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(14,165,233,0.4)'; e.currentTarget.style.color = '#0ea5e9'; e.currentTarget.style.background = 'rgba(14,165,233,0.06)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(148,163,184,0.3)'; e.currentTarget.style.color = '#64748b'; e.currentTarget.style.background = 'rgba(255,255,255,0.9)' }}
             >
               ↓ Download report
             </button>
@@ -692,25 +675,14 @@ const Result = () => {
               onClick={() => navigate('/interview')}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
-                padding: '0.5rem 1rem',
-                borderRadius: '99px',
-                border: 'none',
-                background: 'linear-gradient(135deg, #0ea5e9, #0284c7)',
-                color: '#fff',
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: '0.75rem', fontWeight: 700,
-                cursor: 'pointer',
-                boxShadow: '0 2px 12px rgba(14,165,233,0.35)',
-                transition: 'all 0.2s ease',
+                padding: '0.5rem 1rem', borderRadius: '99px',
+                border: 'none', background: 'linear-gradient(135deg, #0ea5e9, #0284c7)',
+                color: '#fff', fontFamily: "'DM Sans', sans-serif",
+                fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer',
+                boxShadow: '0 2px 12px rgba(14,165,233,0.35)', transition: 'all 0.2s ease',
               }}
-              onMouseEnter={e => {
-                e.currentTarget.style.boxShadow = '0 4px 20px rgba(14,165,233,0.45)'
-                e.currentTarget.style.transform = 'translateY(-1px)'
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.boxShadow = '0 2px 12px rgba(14,165,233,0.35)'
-                e.currentTarget.style.transform = 'translateY(0)'
-              }}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 20px rgba(14,165,233,0.45)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 2px 12px rgba(14,165,233,0.35)'; e.currentTarget.style.transform = 'translateY(0)' }}
             >
               Practice again →
             </button>

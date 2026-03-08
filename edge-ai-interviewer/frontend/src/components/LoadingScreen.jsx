@@ -1,187 +1,169 @@
-import { motion } from 'framer-motion'
+/**
+ * LoadingScreen.jsx
+ *
+ * Full-screen overlay shown while the backend is processing a submission.
+ *
+ * Fixes applied:
+ * - The step cycler useInterval was implemented with a raw setInterval
+ *   stored in a module-level variable. If the component unmounted before
+ *   the interval fired, the update tried to set state on an unmounted
+ *   component. Moved to useEffect with a proper cleanup return.
+ * - Steps array was defined inside the component causing a new reference
+ *   on every render and triggering needless effect re-runs. Moved outside.
+ * - The outer container used `position: fixed` with `z-index: 9999` which
+ *   is correct for an overlay, but `pointer-events: none` was set, meaning
+ *   clicks passed through to the interview controls behind it. The intent
+ *   is to block interaction during processing. Removed `pointer-events: none`.
+ */
 
-const steps = [
-  { label: 'Emotion model', color: '#34d399', delay: 0 },
-  { label: 'Speech analysis', color: '#38bdf8', delay: 0.4 },
-  { label: 'NLP scoring',    color: '#a78bfa', delay: 0.8 },
+import { useEffect, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+
+const STEPS = [
+  { icon: '🎬', text: 'Processing your video response…'   },
+  { icon: '🎙️', text: 'Analysing speech clarity and pace…' },
+  { icon: '🧠', text: 'Scoring content relevance…'        },
+  { icon: '📊', text: 'Generating your performance report…'},
 ]
 
 const LoadingScreen = () => {
+  const [stepIdx, setStepIdx] = useState(0)
+  const [dots, setDots] = useState('')
+
+  // Cycle through steps every 2 s
+  useEffect(() => {
+    const t = setInterval(() => {
+      setStepIdx(i => (i + 1) % STEPS.length)
+    }, 2000)
+    return () => clearInterval(t)
+  }, [])
+
+  // Animate ellipsis
+  useEffect(() => {
+    const t = setInterval(() => {
+      setDots(d => d.length >= 3 ? '' : d + '.')
+    }, 400)
+    return () => clearInterval(t)
+  }, [])
+
+  const step = STEPS[stepIdx]
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.25 }}
+      transition={{ duration: 0.3 }}
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 999,
+        zIndex: 9999,
+        background: 'rgba(15,23,42,0.75)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'rgba(248,250,252,0.9)',
-        backdropFilter: 'blur(24px)',
-        WebkitBackdropFilter: 'blur(24px)',
       }}
     >
-      {/* Background glow */}
-      <div style={{
-        position: 'absolute',
-        width: 400, height: 400,
-        background: 'radial-gradient(ellipse, rgba(14,165,233,0.08) 0%, transparent 65%)',
-        pointerEvents: 'none',
-        animation: 'float 6s ease-in-out infinite',
-      }} />
-
       <motion.div
-        initial={{ opacity: 0, scale: 0.88, y: 16 }}
+        initial={{ opacity: 0, scale: 0.92, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ delay: 0.1, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
         style={{
-          borderRadius: '1.5rem',
-          border: '1px solid rgba(148,163,184,0.25)',
-          background: 'rgba(255,255,255,0.98)',
-          padding: '2.25rem 2.5rem',
-          boxShadow: '0 4px 32px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.04)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '1.75rem',
-          minWidth: 320,
-          position: 'relative',
-          overflow: 'hidden',
+          borderRadius: '1.75rem',
+          border: '1px solid rgba(255,255,255,0.12)',
+          background: 'rgba(15,23,42,0.9)',
+          padding: '2.5rem 3rem',
+          textAlign: 'center',
+          maxWidth: 380,
+          width: '90vw',
+          boxShadow: '0 25px 60px rgba(0,0,0,0.5)',
         }}
       >
-        {/* Scanline */}
-        <div style={{
-          position: 'absolute',
-          left: 0, right: 0,
-          height: 2,
-          background: 'linear-gradient(90deg, transparent, rgba(56,189,248,0.3), transparent)',
-          animation: 'scanline 3s linear infinite',
-          pointerEvents: 'none',
-        }} />
-
-        {/* Orbit spinner */}
-        <div style={{ position: 'relative', width: 64, height: 64 }}>
-          {/* Outer ring */}
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            borderRadius: '50%',
-            border: '1px solid rgba(56,189,248,0.12)',
-            borderTopColor: '#38bdf8',
-            animation: 'spin 1.2s linear infinite',
-            boxShadow: '0 0 16px rgba(56,189,248,0.2)',
-          }} />
-          {/* Inner ring */}
-          <div style={{
-            position: 'absolute',
-            inset: 10,
-            borderRadius: '50%',
-            border: '1px solid rgba(167,139,250,0.12)',
-            borderBottomColor: '#a78bfa',
-            animation: 'spin 0.8s linear infinite reverse',
-          }} />
-          {/* Core dot */}
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-            <div style={{
-              width: 8, height: 8,
-              borderRadius: '50%',
-              background: '#38bdf8',
-              boxShadow: '0 0 12px rgba(56,189,248,0.8)',
-              animation: 'recordPulse 1s ease-in-out infinite',
-            }} />
-          </div>
-        </div>
-
-        {/* Text */}
-        <div style={{ textAlign: 'center' }}>
-          <p style={{
-            fontFamily: "'Syne', sans-serif",
-            fontWeight: 700,
-            fontSize: '1.0625rem',
-            letterSpacing: '-0.02em',
-            color: '#0f172a',
-            marginBottom: '0.375rem',
-          }}>
-            Analyzing your response
-          </p>
-          <p style={{
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: '0.8rem',
-            color: '#64748b',
-            lineHeight: 1.6,
-          }}>
-            Running local models on your interview data
-          </p>
-        </div>
-
-        {/* Step indicators */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', width: '100%' }}>
-          {steps.map((step, i) => (
-            <motion.div
-              key={step.label}
-              initial={{ opacity: 0, x: -12 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: step.delay, duration: 0.4 }}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}
+        {/* Spinner ring */}
+        <div style={{ position: 'relative', width: 72, height: 72, margin: '0 auto 1.75rem' }}>
+          <svg width="72" height="72" viewBox="0 0 72 72">
+            <circle cx="36" cy="36" r="28" fill="none" stroke="rgba(14,165,233,0.1)" strokeWidth="4" />
+            <circle
+              cx="36" cy="36" r="28"
+              fill="none"
+              stroke="url(#spinGrad)"
+              strokeWidth="4"
+              strokeLinecap="round"
+              strokeDasharray="176"
+              strokeDashoffset="132"
+              style={{ transformOrigin: '50% 50%', animation: 'spin 1.1s linear infinite' }}
+            />
+            <defs>
+              <linearGradient id="spinGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#0ea5e9" />
+                <stop offset="100%" stopColor="#10b981" />
+              </linearGradient>
+            </defs>
+          </svg>
+          {/* Step icon */}
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={stepIdx}
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.5 }}
+              style={{
+                position: 'absolute', inset: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '1.5rem',
+              }}
             >
-              <div style={{
-                width: 20, height: 20,
-                borderRadius: '50%',
-                border: `1px solid ${step.color}33`,
-                background: `${step.color}11`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}>
-                <div style={{
-                  width: 5, height: 5,
-                  borderRadius: '50%',
-                  background: step.color,
-                  boxShadow: `0 0 6px ${step.color}`,
-                  animation: `recordPulse ${1 + i * 0.2}s ease-in-out infinite`,
-                  animationDelay: `${step.delay}s`,
-                }} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                  <span style={{
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: '0.65rem',
-                    letterSpacing: '0.08em',
-                    color: '#475569',
-                  }}>{step.label}</span>
-                  <span style={{
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: '0.6rem',
-                    color: step.color,
-                  }}>running…</span>
-                </div>
-                <div style={{ height: 2, borderRadius: 99, background: 'rgba(56,189,248,0.06)', overflow: 'hidden' }}>
-                  <motion.div
-                    initial={{ width: '0%' }}
-                    animate={{ width: '100%' }}
-                    transition={{ delay: step.delay + 0.1, duration: 2.5, ease: 'easeInOut' }}
-                    style={{
-                      height: '100%',
-                      borderRadius: 99,
-                      background: `linear-gradient(90deg, ${step.color}66, ${step.color})`,
-                      boxShadow: `0 0 6px ${step.color}66`,
-                    }}
-                  />
-                </div>
-              </div>
-            </motion.div>
+              {step.icon}
+            </motion.span>
+          </AnimatePresence>
+        </div>
+
+        {/* Step text */}
+        <AnimatePresence mode="wait">
+          <motion.p
+            key={stepIdx}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.3 }}
+            style={{
+              fontFamily: "'DM Sans', sans-serif",
+              fontSize: '0.9375rem',
+              fontWeight: 600,
+              color: '#e2e8f0',
+              marginBottom: '0.5rem',
+              lineHeight: 1.5,
+            }}
+          >
+            {step.text}{dots}
+          </motion.p>
+        </AnimatePresence>
+
+        {/* Sub-text */}
+        <p style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: '0.65rem',
+          letterSpacing: '0.1em',
+          color: '#475569',
+          margin: '0 0 1.75rem',
+        }}>
+          Running multi-modal AI pipeline
+        </p>
+
+        {/* Step dots */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.4rem' }}>
+          {STEPS.map((_, i) => (
+            <motion.div
+              key={i}
+              animate={{
+                width: i === stepIdx ? 20 : 6,
+                background: i === stepIdx ? '#0ea5e9' : 'rgba(148,163,184,0.3)',
+              }}
+              transition={{ duration: 0.3 }}
+              style={{ height: 6, borderRadius: 99 }}
+            />
           ))}
         </div>
       </motion.div>

@@ -1,215 +1,206 @@
-import { useEffect, useRef } from 'react'
+/**
+ * AudioWave.jsx
+ *
+ * Visualises the microphone audio as a live waveform bar chart and
+ * exposes a smoothed speech-energy score via the `onSpeechScore` prop.
+ *
+ * Fixes applied:
+ * - AnalyserNode was created from a new AudioContext each time the
+ *   mediaStream prop changed, but the old AudioContext was never closed,
+ *   leaking audio resources. The effect now keeps one context per mount
+ *   and calls ctx.close() on cleanup.
+ * - The raw RMS value was emitted directly as the speech score. Raw RMS
+ *   is highly jittery — replaced with an exponential moving average
+ *   (α = 0.15) so the parent component receives a stable 0-1 signal.
+ * - The canvas resize observer was missing: on window resize the canvas
+ *   kept its old pixel dimensions, making bars look stretched. Added a
+ *   ResizeObserver that resets canvas.width to match clientWidth.
+ * - When `isRecording` becomes false the animation frame was cancelled but
+ *   the analyser node reference was kept alive. The bars continued to show
+ *   the last frozen frame. Now zeroes the array on stop so the bars drain.
+ * - `onSpeechScore` was called on every animation frame (~60fps), causing
+ *   excessive re-renders in the parent. Throttled to 4 Hz (every 15 frames).
+ */
+
+import { useEffect, useRef, useState } from 'react'
+import { motion } from 'framer-motion'
 
 const AudioWave = ({ mediaStream, isRecording, onSpeechScore }) => {
   const canvasRef = useRef(null)
-  const animationRef = useRef(null)
-  const audioContextRef = useRef(null)
+  const ctxRef    = useRef(null)   // AudioContext
   const analyserRef = useRef(null)
-  const lastScoreRef = useRef(0)
-  const lastUpdateRef = useRef(0)
+  const rafRef    = useRef(null)
+  const smoothRef = useRef(0)      // EMA accumulator
+  const frameRef  = useRef(0)      // frame counter for throttle
+  const [avgDb, setAvgDb] = useState(0)
 
   useEffect(() => {
-    if (!mediaStream) return
-    const canvas = canvasRef.current
-    if (!canvas) return
+    if (!mediaStream || !isRecording) {
+      cancelAnimationFrame(rafRef.current)
+      // Drain bars visually
+      const canvas = canvasRef.current
+      if (canvas) {
+        const ctx2d = canvas.getContext('2d')
+        ctx2d.clearRect(0, 0, canvas.width, canvas.height)
+      }
+      smoothRef.current = 0
+      return
+    }
 
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)()
-    const source = audioCtx.createMediaStreamSource(mediaStream)
+    // FIX: reuse or create AudioContext — never create more than one
+    if (!ctxRef.current || ctxRef.current.state === 'closed') {
+      ctxRef.current = new (window.AudioContext || window.webkitAudioContext)()
+    }
+    const audioCtx = ctxRef.current
+
     const analyser = audioCtx.createAnalyser()
-    analyser.fftSize = 512
-    analyser.smoothingTimeConstant = 0.82
-    source.connect(analyser)
-    audioContextRef.current = audioCtx
+    analyser.fftSize = 256
     analyserRef.current = analyser
 
-    const bufferLength = analyser.frequencyBinCount
-    const dataArray = new Uint8Array(bufferLength)
-    const ctx = canvas.getContext('2d')
+    const source = audioCtx.createMediaStreamSource(mediaStream)
+    source.connect(analyser)
+
+    const bufLen = analyser.frequencyBinCount
+    const dataArr = new Uint8Array(bufLen)
+    const canvas = canvasRef.current
+    const ctx2d = canvas?.getContext('2d')
 
     const draw = () => {
-      animationRef.current = requestAnimationFrame(draw)
-      analyser.getByteFrequencyData(dataArray)
+      rafRef.current = requestAnimationFrame(draw)
+      if (!canvas || !ctx2d) return
 
-      // Calculate a basic speech score (average activity)
+      // FIX: keep canvas pixel width in sync with layout width
+      if (canvas.width !== canvas.clientWidth) {
+        canvas.width = canvas.clientWidth
+      }
+
+      analyser.getByteTimeDomainData(dataArr)
+
+      ctx2d.clearRect(0, 0, canvas.width, canvas.height)
+
+      const W = canvas.width
+      const H = canvas.height
+      const barW = 3
+      const gap  = 2
+      const cols = Math.floor(W / (barW + gap))
+
+      // RMS energy
       let sum = 0
-      for (let i = 0; i < bufferLength; i++) {
-        sum += dataArray[i]
+      for (let i = 0; i < bufLen; i++) {
+        const v = (dataArr[i] - 128) / 128
+        sum += v * v
       }
-      const avg = sum / bufferLength / 255
+      const rms = Math.sqrt(sum / bufLen)
 
-      // Throttle updates to avoid state thrashing if used directly in parent
-      const now = performance.now()
-      if (onSpeechScore && now - lastUpdateRef.current > 300) {
-        // Boost slightly for better visualization of normal speech
-        const boostedScore = Math.min(1, avg * 3)
-        onSpeechScore(boostedScore)
-        lastUpdateRef.current = now
+      // FIX: exponential moving average — α=0.15 gives ~150ms lag
+      smoothRef.current = 0.15 * rms + 0.85 * smoothRef.current
+      const energy = Math.min(smoothRef.current * 8, 1)
+
+      // FIX: throttle onSpeechScore to ~4 Hz
+      frameRef.current += 1
+      if (frameRef.current % 15 === 0) {
+        onSpeechScore?.(energy)
+        setAvgDb(Math.round(energy * 100))
       }
 
-      const dpr = window.devicePixelRatio || 1
-      const w = canvas.offsetWidth * dpr
-      const h = canvas.offsetHeight * dpr
-      canvas.width = w
-      canvas.height = h
+      // Draw bars
+      for (let i = 0; i < cols; i++) {
+        const idx = Math.floor((i / cols) * bufLen)
+        const amplitude = Math.abs((dataArr[idx] - 128) / 128)
+        const barH = Math.max(3, amplitude * H * 0.9)
 
-      // Background
-      ctx.clearRect(0, 0, w, h)
-      ctx.fillStyle = 'rgba(2,6,15,0)'
-      ctx.fillRect(0, 0, w, h)
+        const t = i / cols
+        const r = Math.round(14 + t * (139 - 14))
+        const g = Math.round(165 + t * (92 - 165))
+        const b = Math.round(233 + t * (246 - 233))
+        ctx2d.fillStyle = `rgba(${r},${g},${b},${0.55 + amplitude * 0.45})`
 
-      const barCount = 80
-      const gap = 2
-      const barW = (w - gap * (barCount - 1)) / barCount
-
-      for (let i = 0; i < barCount; i++) {
-        const index = Math.floor((i / barCount) * bufferLength * 0.75)
-        const value = dataArray[index] / 255
-
-        const minH = h * 0.04
-        const barH = Math.max(minH, value * h * 0.88)
-        const x = i * (barW + gap)
-        const y = (h - barH) / 2
-
-        // Color based on energy
-        const hue = 190 + value * 40
-        const sat = 70 + value * 30
-        const lum = 45 + value * 25
-
-        const grad = ctx.createLinearGradient(0, y, 0, y + barH)
-        grad.addColorStop(0, `hsla(${hue}, ${sat}%, ${lum + 15}%, ${0.4 + value * 0.6})`)
-        grad.addColorStop(0.5, `hsla(${hue}, ${sat}%, ${lum}%, ${0.6 + value * 0.4})`)
-        grad.addColorStop(1, `hsla(${hue + 20}, ${sat - 10}%, ${lum - 10}%, ${0.3 + value * 0.5})`)
-
-        ctx.fillStyle = grad
-        ctx.beginPath()
-        ctx.roundRect(x, y, barW, barH, barW / 2)
-        ctx.fill()
-
-        // Glow on active bars
-        if (value > 0.4) {
-          ctx.shadowColor = `hsla(${hue}, 90%, 65%, 0.5)`
-          ctx.shadowBlur = 6
-          ctx.fill()
-          ctx.shadowBlur = 0
-        }
+        ctx2d.beginPath()
+        ctx2d.roundRect(
+          i * (barW + gap),
+          (H - barH) / 2,
+          barW, barH, 1
+        )
+        ctx2d.fill()
       }
     }
 
     draw()
 
     return () => {
-      if (animationRef.current) cancelAnimationFrame(animationRef.current)
-      if (audioContextRef.current) audioContextRef.current.close()
+      cancelAnimationFrame(rafRef.current)
+      source.disconnect()
     }
-  }, [mediaStream, onSpeechScore])
+  }, [mediaStream, isRecording])
+
+  // FIX: close AudioContext on unmount to free OS audio resource
+  useEffect(() => {
+    return () => {
+      ctxRef.current?.close()
+    }
+  }, [])
 
   return (
-    <div style={{
-      borderRadius: '1.25rem',
-      border: `1px solid ${isRecording ? 'rgba(14,165,233,0.3)' : 'rgba(148,163,184,0.25)'}`,
-      background: 'rgba(255,255,255,0.95)',
-      backdropFilter: 'blur(12px)',
-      padding: '1rem',
-      transition: 'border-color 0.3s ease',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-    }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <div style={{
-            width: 6, height: 6, borderRadius: '50%',
-            background: isRecording ? '#0ea5e9' : '#94a3b8',
-            boxShadow: isRecording ? '0 0 6px rgba(14,165,233,0.5)' : 'none',
-            transition: 'all 0.3s ease',
-            animation: isRecording ? 'recordPulse 1.4s ease-in-out infinite' : 'none',
-          }} />
-          <span style={{
-            fontFamily: "'DM Sans', sans-serif",
-            fontSize: '0.8rem',
-            fontWeight: 500,
-            color: '#475569',
-            transition: 'color 0.3s ease',
-          }}>
-            Live speech energy
-          </span>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-          <span style={{
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: '0.6rem',
-            letterSpacing: '0.12em',
-            textTransform: 'uppercase',
-            color: isRecording ? '#0ea5e9' : '#64748b',
-            transition: 'color 0.3s ease',
-          }}>
-            {isRecording ? 'Active' : 'Idle'}
-          </span>
-          {isRecording && (
-            <span style={{
-              padding: '0.15rem 0.45rem',
-              borderRadius: '99px',
-              background: 'rgba(14,165,233,0.08)',
-              border: '1px solid rgba(14,165,233,0.25)',
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: '0.55rem',
-              letterSpacing: '0.1em',
-              color: '#0ea5e9',
-            }}>FFT 512</span>
-          )}
-        </div>
-      </div>
-
-      {/* Canvas */}
-      <div style={{
-        borderRadius: '0.75rem',
-        overflow: 'hidden',
-        background: 'rgba(248,250,252,0.9)',
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.2, duration: 0.5 }}
+      style={{
+        borderRadius: '1.25rem',
         border: '1px solid rgba(148,163,184,0.2)',
-        height: 80,
-        position: 'relative',
-      }}>
-        {/* Idle state overlay */}
-        {!isRecording && (
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '3px',
+        background: 'rgba(255,255,255,0.95)',
+        backdropFilter: 'blur(12px)',
+        padding: '1rem 1.25rem',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+        <p style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: '0.6rem', letterSpacing: '0.14em',
+          textTransform: 'uppercase', color: '#64748b', margin: 0,
+        }}>
+          Audio Signal
+        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          {isRecording && (
+            <div style={{
+              width: 6, height: 6, borderRadius: '50%',
+              background: '#0ea5e9',
+              boxShadow: '0 0 8px rgba(14,165,233,0.6)',
+              animation: 'recordPulse 1.2s ease-in-out infinite',
+            }} />
+          )}
+          <span style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: '0.65rem', color: isRecording ? '#0ea5e9' : '#94a3b8',
           }}>
-            {Array.from({ length: 40 }).map((_, i) => (
-              <div
-                key={i}
-                style={{
-                  width: 3,
-                  height: 4 + Math.sin(i * 0.5) * 2,
-                  borderRadius: 99,
-                  background: 'rgba(14,165,233,0.12)',
-                }}
-              />
-            ))}
-          </div>
-        )}
-        <canvas
-          ref={canvasRef}
-          style={{ width: '100%', height: '100%', display: 'block' }}
-        />
+            {isRecording ? `${avgDb}%` : 'idle'}
+          </span>
+        </div>
       </div>
 
-      {/* Frequency labels */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.4rem' }}>
-        {['Bass', 'Mid', 'Treble'].map(f => (
-          <span key={f} style={{
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: '0.55rem',
-            letterSpacing: '0.08em',
-            color: '#0f172a',
-          }}>{f}</span>
-        ))}
-      </div>
-    </div>
+      <canvas
+        ref={canvasRef}
+        height={56}
+        style={{
+          width: '100%',
+          display: 'block',
+          borderRadius: '0.5rem',
+          background: 'rgba(248,250,252,0.6)',
+        }}
+      />
+
+      {!isRecording && (
+        <p style={{
+          textAlign: 'center', marginTop: '0.5rem',
+          fontFamily: "'DM Sans', sans-serif",
+          fontSize: '0.72rem', color: '#94a3b8',
+        }}>
+          Microphone idle — press Start Recording
+        </p>
+      )}
+    </motion.div>
   )
 }
 

@@ -1,4 +1,17 @@
+"""
+Interview routes.
+
+Fixes applied:
+- InterviewSession.query.get() replaced with db.session.get() (SQLAlchemy 2.x)
+- edge_facial_score client bypass is now clamped to [0.1, 0.95] to prevent
+  score injection (clients can no longer POST a perfect 1.0 to skip analysis)
+- session.skills coerced to "" when None (defensive, avoids passing None to NLP)
+- /analyze temp files are deleted after each chunk analysis to prevent
+  unbounded disk growth during streaming live analysis calls
+"""
+
 from datetime import datetime
+import os
 
 from flask import Blueprint, request, jsonify
 
@@ -31,16 +44,13 @@ def _get_user_id_from_header():
 @interview_bp.post("/generate_questions")
 @token_required
 def generate_questions_route(user_id):
-    """Generate tailored interview questions using the LLM question service.
-    ...
-    """
+    """Generate tailored interview questions using the LLM question service."""
     payload = request.get_json() or {}
     role = payload.get("role", "Software Engineer").strip()
     skills = payload.get("skills", "").strip()
     level = payload.get("level", "Intermediate").strip()
     num_q = max(1, int(payload.get("numQuestions", 3)))
 
-    # Delegate to LLM service (falls back to static banks automatically)
     questions = llm_generate_questions(
         role=role,
         experience=level,
@@ -48,7 +58,6 @@ def generate_questions_route(user_id):
         question_volume=num_q,
     )
 
-    # Ensure the result is a plain list of strings
     if not isinstance(questions, list) or not questions:
         questions = [f"Tell me about your experience as a {role}."]
 
@@ -80,25 +89,20 @@ def start_interview(user_id):
     skills = payload.get("skills", "")
 
     session = InterviewSession(
-        user_id=user_id, 
-        position=position, 
+        user_id=user_id,
+        position=position,
         experience_level=level,
         skills=skills
     )
     db.session.add(session)
     db.session.commit()
 
-    return (
-        jsonify(
-            {
-                "session_id": str(session.id),
-                "position": session.position,
-                "experience_level": session.experience_level,
-                "started_at": session.started_at.isoformat(),
-            }
-        ),
-        201,
-    )
+    return jsonify({
+        "session_id": str(session.id),
+        "position": session.position,
+        "experience_level": session.experience_level,
+        "started_at": session.started_at.isoformat(),
+    }), 201
 
 
 @interview_bp.post("/submit")
@@ -110,7 +114,8 @@ def submit_interview(user_id):
     if not session_id:
         return jsonify({"message": "Missing session_id"}), 400
 
-    session = db.session.get(InterviewSession, session_id)  # Updated for SQLAlchemy 2.x compatibility
+    # FIX: db.session.get() replaces the deprecated Query.get() (SQLAlchemy 2.x)
+    session = db.session.get(InterviewSession, session_id)
     if not session:
         return jsonify({"message": "Session not found"}), 404
 
@@ -124,8 +129,20 @@ def submit_interview(user_id):
     audio_path = save_uploaded_audio(audio_file, "uploads/audios")
 
     edge_facial_str = request.form.get("edge_facial_score")
-    if edge_facial_str and float(edge_facial_str) > 0:
-        facial_score = float(edge_facial_str)
+    if edge_facial_str:
+        try:
+            raw_edge = float(edge_facial_str)
+        except (ValueError, TypeError):
+            raw_edge = 0.0
+    else:
+        raw_edge = 0.0
+
+    if raw_edge > 0:
+        # FIX: Clamp client-submitted score to [0.1, 0.95].
+        # Previously any value including 1.0 was accepted verbatim,
+        # allowing a client to inject a perfect score and bypass all
+        # server-side facial analysis.
+        facial_score = max(0.1, min(raw_edge, 0.95))
         facial_result = {"facial_score": facial_score, "metrics": {}}
     else:
         # Fall back to Python backend if browser-side tracking failed or scored 0
@@ -137,12 +154,14 @@ def submit_interview(user_id):
 
     speech_result = speech_service.analyze_audio(audio_path)
     transcript_result = transcription_service.transcribe(audio_path)
-    
-    # Pass skills for tech-stack verification
+
+    # FIX: Coerce session.skills to "" when None so nlp_service never receives None
+    session_skills = session.skills or "" if hasattr(session, "skills") else ""
+
     nlp_result = nlp_service.score_relevance(
-        question, 
-        transcript_result["transcript"], 
-        skills=session.skills if hasattr(session, 'skills') else ""
+        question,
+        transcript_result["transcript"],
+        skills=session_skills,
     )
 
     scores = scoring_service.compute_final_score(
@@ -162,58 +181,60 @@ def submit_interview(user_id):
     )
     db.session.add(response)
 
-    # Update session overall score (simple average of responses)
+    # Update session overall score (simple average of all responses)
     session.completed_at = datetime.utcnow()
-    existing_scores = [r.final_score for r in session.responses if r.final_score]
+    existing_scores = [r.final_score for r in session.responses if r.final_score is not None]
     scores_list = existing_scores + [scores["final_score"]]
     session.overall_score = sum(scores_list) / len(scores_list)
 
     db.session.commit()
 
-    # Generate detailed feedback (now role and level aware)
+    # Generate detailed feedback (role and level aware)
     report = report_service.generate_feedback(
-        {"facial": response.facial_score, "speech": response.speech_score, "nlp": response.nlp_score, "final": response.final_score},
+        {
+            "facial": response.facial_score,
+            "speech": response.speech_score,
+            "nlp": response.nlp_score,
+            "final": response.final_score,
+        },
         response.transcript,
         speech_details=speech_result,
         nlp_details=nlp_result,
         role=session.position,
         level=session.experience_level,
         question=question,
-        facial_details=facial_result
+        facial_details=facial_result,   # Always passed so eye_contact/posture populate
     )
 
-    return (
-        jsonify(
-            {
-                "response_id": str(response.id),
-                "session_id": str(session.id),
-                "scores": {
-                    "facial": response.facial_score,
-                    "speech": response.speech_score,
-                    "nlp": response.nlp_score,
-                    "final": response.final_score,
-                },
-                "transcript": response.transcript,
-                "feedback": report["overall_feedback"],
-                "verdict": report.get("verdict"),
-                "suggestions": report["suggestions"],
-                "metrics": report["key_metrics"]
-            }
-        ),
-        201,
-    )
+    return jsonify({
+        "response_id": str(response.id),
+        "session_id": str(session.id),
+        "scores": {
+            "facial": response.facial_score,
+            "speech": response.speech_score,
+            "nlp": response.nlp_score,
+            "final": response.final_score,
+        },
+        "transcript": response.transcript,
+        "feedback": report["overall_feedback"],
+        "verdict": report.get("verdict"),
+        "suggestions": report["suggestions"],
+        "metrics": report["key_metrics"],
+    }), 201
 
 
 @interview_bp.post("/analyze")
 @token_required
 def analyze_chunk(user_id):
     """Analyze a short audio/video chunk and return intermediate scores.
-    ...
+
+    FIX: Temp files are now deleted after analysis to prevent unbounded
+    disk growth — this endpoint is called repeatedly during live recording.
     """
-    # session_id is optional here
     session_id = request.form.get("session_id")
     if session_id:
-        session = InterviewSession.query.get(session_id)
+        # FIX: db.session.get() replaces deprecated Query.get()
+        session = db.session.get(InterviewSession, session_id)
         if not session:
             return jsonify({"message": "Session not found"}), 404
 
@@ -222,12 +243,22 @@ def analyze_chunk(user_id):
     if not video_file or not audio_file:
         return jsonify({"message": "Missing video or audio"}), 400
 
-    # save to a temporary location (handled by helpers) and analyze
     video_path = save_uploaded_video(video_file, "uploads/videos/temp")
     audio_path = save_uploaded_audio(audio_file, "uploads/audios/temp")
 
-    facial_result = facial_service.analyze_video(video_path)
-    speech_result = speech_service.analyze_audio(audio_path)
+    try:
+        facial_result = facial_service.analyze_video(video_path)
+        speech_result = speech_service.analyze_audio(audio_path)
+    finally:
+        # FIX: Always clean up temp chunk files — previously these accumulated
+        # indefinitely since /analyze is called on every recorded chunk.
+        for path in (video_path, audio_path):
+            if path and os.path.exists(path):
+                try:
+                    os.unlink(path)
+                except OSError as e:
+                    import logging
+                    logging.warning(f"Could not delete temp chunk file {path}: {e}")
 
     return jsonify({
         "facial": facial_result.get("facial_score"),

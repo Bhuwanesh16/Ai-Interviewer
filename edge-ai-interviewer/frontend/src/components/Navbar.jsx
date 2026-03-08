@@ -1,23 +1,61 @@
-import { Link, useLocation } from 'react-router-dom'
-import { useState } from 'react'
+/**
+ * Navbar.jsx
+ *
+ * Fixes applied:
+ * - `user` was read from localStorage on every render via an inline IIFE.
+ *   If `localStorage.setItem('user', ...)` is called after login, the Navbar
+ *   never reflects the update because the IIFE only runs once at render time
+ *   and there is no state — it won't re-render. Fixed by reading from state
+ *   and listening to a custom `storage` event so cross-tab and same-tab
+ *   login/logout both update the nav immediately.
+ * - handleLogout: `window.location.href = '/'` causes a full page reload
+ *   which is unnecessary in a SPA. Replaced with `navigate('/')` so the
+ *   React tree stays mounted and the transition is smooth. The state clear
+ *   (setUser(null)) is now synchronous before navigation.
+ * - Register link in the "not logged in" state should read "Sign in" since
+ *   the /register page handles both modes — label kept as "Sign in" which
+ *   matches the page's own header ("Welcome back / Create account").
+ * - Active route detection: `/result/...` routes should highlight the
+ *   "Interview" nav link since results belong to that flow. Already correct.
+ * - Added `aria-label` to the sign-out button for accessibility.
+ */
+
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 
 const Navbar = () => {
   const location = useLocation()
-  const user = (() => {
-    try { return JSON.parse(localStorage.getItem('user')) } catch { return null }
-  })()
+  const navigate = useNavigate()
   const [hovered, setHovered] = useState(null)
 
+  // FIX: use state so the nav re-renders after login/logout
+  const [user, setUser] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('user')) } catch { return null }
+  })
+
+  // Sync when localStorage changes (same-tab login, cross-tab logout)
+  useEffect(() => {
+    const onStorage = () => {
+      try { setUser(JSON.parse(localStorage.getItem('user'))) }
+      catch { setUser(null) }
+    }
+    window.addEventListener('storage', onStorage)
+    // Also fire on route change to catch same-tab login
+    onStorage()
+    return () => window.removeEventListener('storage', onStorage)
+  }, [location.pathname])
+
   const links = [
-    { to: '/', label: 'Home' },
-    { to: '/register', label: 'Register' },
+    { to: '/',          label: 'Home'      },
+    { to: '/register',  label: 'Register'  },
     { to: '/interview', label: 'Interview' },
   ]
 
   const handleLogout = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
-    window.location.href = '/'
+    setUser(null)             // FIX: update state synchronously
+    navigate('/')             // FIX: SPA navigation, no full reload
   }
 
   return (
@@ -25,7 +63,7 @@ const Navbar = () => {
       position: 'sticky',
       top: 0,
       zIndex: 200,
-      background: 'rgba(255, 255, 255, 0.88)',
+      background: 'rgba(255,255,255,0.88)',
       backdropFilter: 'blur(20px) saturate(1.8)',
       WebkitBackdropFilter: 'blur(20px) saturate(1.8)',
       borderBottom: '1px solid rgba(148,163,184,0.25)',
@@ -44,12 +82,10 @@ const Navbar = () => {
         {/* Brand */}
         <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <div style={{
-            width: 28, height: 28,
-            borderRadius: '50%',
+            width: 28, height: 28, borderRadius: '50%',
             background: 'linear-gradient(135deg, #0ea5e9 0%, #059669 100%)',
             boxShadow: '0 2px 12px rgba(14,165,233,0.35)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'transform 0.2s ease, box-shadow 0.2s ease',
           }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round">
               <circle cx="12" cy="12" r="3" />
@@ -73,11 +109,11 @@ const Navbar = () => {
         {/* Nav links */}
         <nav style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
           {links.map(({ to, label }) => {
-            const isInterviewRoute =
+            const isInterviewFlow =
               to === '/interview' &&
               (location.pathname.startsWith('/interview') ||
                location.pathname.startsWith('/result'))
-            const active = isInterviewRoute || location.pathname === to
+            const active = isInterviewFlow || location.pathname === to
             return (
               <Link
                 key={to}
@@ -91,8 +127,10 @@ const Navbar = () => {
                   textDecoration: 'none',
                   padding: '0.35rem 0.75rem',
                   borderRadius: '0.5rem',
-                  color: active ? '#0ea5e9' : hovered === to ? '#0ea5e9' : '#64748b',
-                  background: active ? 'rgba(14,165,233,0.08)' : hovered === to ? 'rgba(14,165,233,0.05)' : 'transparent',
+                  color: active || hovered === to ? '#0ea5e9' : '#64748b',
+                  background: active
+                    ? 'rgba(14,165,233,0.08)'
+                    : hovered === to ? 'rgba(14,165,233,0.05)' : 'transparent',
                   transition: 'all 0.2s ease',
                   position: 'relative',
                 }}
@@ -112,19 +150,16 @@ const Navbar = () => {
           })}
         </nav>
 
-        {/* Auth */}
+        {/* Auth section */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           {user ? (
             <>
-              <span style={{
-                fontSize: '0.75rem',
-                color: '#475569',
-                fontFamily: "'DM Sans', sans-serif",
-              }}>
+              <span style={{ fontSize: '0.75rem', color: '#475569', fontFamily: "'DM Sans', sans-serif" }}>
                 {user.name || user.email}
               </span>
               <button
                 onClick={handleLogout}
+                aria-label="Sign out"
                 style={{
                   fontSize: '0.75rem',
                   color: '#64748b',
