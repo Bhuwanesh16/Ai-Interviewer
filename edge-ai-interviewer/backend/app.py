@@ -110,7 +110,17 @@ def _prewarm_phi3():
 
 def create_app():
     app = Flask(__name__)
-    app.config.from_object(get_config())
+    cfg = get_config()
+    app.config.from_object(cfg)
+
+    # Run config init tasks (create data/storage/logs dirs) before
+    # initializing extensions so the DB file can be created.
+    try:
+        cfg.init_app(app)
+    except Exception:
+        # Be forgiving: if init_app has side-effects that fail in some
+        # environments, continue and let later failures surface.
+        pass
 
     setup_logging(app)
     init_extensions(app)
@@ -123,10 +133,12 @@ def create_app():
     from routes.auth_routes import auth_bp
     from routes.interview_routes import interview_bp
     from routes.result_routes import result_bp
+    from routes.debug_routes import debug_bp
 
     app.register_blueprint(auth_bp,      url_prefix="/api/auth")
     app.register_blueprint(interview_bp, url_prefix="/api/interview")
     app.register_blueprint(result_bp,    url_prefix="/api")
+    app.register_blueprint(debug_bp,     url_prefix="/api/debug")
 
     @app.route("/api/health", methods=["GET", "OPTIONS"])
     def health_check():
@@ -173,6 +185,33 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+
+    # Background pre-warm for heavy ML models to avoid long first-request delays
+    def _prewarm_models():
+        # Transcription (Whisper) — call internal loader to warm weights
+        try:
+            import services.transcription_service as ts
+            try:
+                ts._load_model()
+                logging.info("[prewarm] Whisper model loaded into RAM")
+            except Exception as e:
+                logging.info(f"[prewarm] Whisper prewarm skipped: {e}")
+        except Exception:
+            logging.info("[prewarm] transcription_service import failed — skipping Whisper prewarm")
+
+        # NLP (sentence-transformers) — import module to trigger model load
+        try:
+            import services.nlp_service as ns
+            # The module-level `nlp_service` will attempt to load SentenceTransformer
+            if getattr(ns, 'nlp_service', None) and getattr(ns.nlp_service, 'model', None):
+                logging.info("[prewarm] NLP model loaded into RAM")
+        except Exception as e:
+            logging.info(f"[prewarm] NLP prewarm skipped: {e}")
+
+    try:
+        threading.Thread(target=_prewarm_models, daemon=True).start()
+    except Exception:
+        logging.warning("Could not start prewarm thread")
 
     return app
 

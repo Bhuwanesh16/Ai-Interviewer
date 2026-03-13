@@ -76,12 +76,14 @@ class NLPService:
                 "metrics": {"reason": "Transcription Failure", "word_count": 0}
             }
 
-        if not answer or len(answer.strip()) < 10:
+        if not answer:
             return {
-                "nlp_score": 0.0,
+                "nlp_score": None,
                 "is_valid": False,
                 "metrics": {"reason": "Insufficient content", "word_count": 0}
             }
+
+        short_answer = len(answer.strip()) < 10
 
         # 1. Semantic Similarity (45% weight)
         if not self.model:
@@ -134,6 +136,13 @@ class NLPService:
             (tech_score * 0.15)
         )
         final_score = max(0.05, min(final_score - filler_penalty, 1.0))
+
+        # If the answer is very short, don't force a hard 0.0 — instead
+        # produce a conservative but informative score and mark it
+        # as not valid. This prevents the UI showing 0/100 which is
+        # misleading when the transcript exists but is brief.
+        if short_answer:
+            final_score = min(final_score, 0.45)
 
         is_valid = (semantic_score > 0.1 or keyword_score > 0.3) and word_count >= 10
 

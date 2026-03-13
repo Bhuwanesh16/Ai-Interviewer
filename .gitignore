@@ -1,0 +1,29 @@
+# Database
+backend/data/*.db
+
+# Uploads / runtime storage
+backend/storage/videos/
+backend/storage/audios/
+!backend/storage/.gitkeep
+
+# Logs
+backend/logs/*.log
+!backend/logs/.gitkeep
+
+# Environment
+.env
+*.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node
+node_modules/
+dist/
+
+# OS
+.DS_Store
+Thumbs.db

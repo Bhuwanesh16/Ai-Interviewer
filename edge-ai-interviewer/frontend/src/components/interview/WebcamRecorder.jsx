@@ -34,12 +34,10 @@ import { motion } from 'framer-motion'
 const MEDIAPIPE_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js'
 const CAMERA_CDN    = 'https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js'
 
-// 1fps inference — very low throughput to avoid main-thread backlog
-// Use when running on low-end machines or during heavy CPU load.
-const SEND_THROTTLE_MS  = 1000
-// Flush scores to React state once per second — minimizes React renders
-// and reduces 'message' handler overhead from the MediaPipe wasm worker.
-const STATE_FLUSH_MS    = 1000
+// 3fps inference — gives MediaPipe time to finish each frame before the next
+const SEND_THROTTLE_MS  = 333
+// Flush scores to React state 2x per second — keeps UI responsive
+const STATE_FLUSH_MS    = 500
 
 const MESH_POINTS = [33, 133, 362, 263, 61, 291, 4, 234, 454]
 
@@ -143,24 +141,13 @@ const WebcamRecorder = ({
     // This interval reads it and calls setState at a controlled 2Hz rate.
     // Result: React never re-renders inside the MediaPipe message handler.
     const startFlushInterval = () => {
-        let lastEmitted = null
-        flushRef.current = setInterval(() => {
-          // If the page is hidden, don't flush — reduces background work
-          if (typeof document !== 'undefined' && document.hidden) return
-
-          const score = latestScoreRef.current
-          if (!score) return
-
-          // Avoid emitting identical or near-identical scores to prevent
-          // unnecessary React renders. Threshold tuned to 1% change.
-          const prev = lastEmitted
-          const diff = prev == null ? Infinity : Math.abs((score.score || 0) - (prev.score || 0))
-          if (diff < 0.01) return
-
-          lastEmitted = score
+      flushRef.current = setInterval(() => {
+        const score = latestScoreRef.current
+        if (score) {
           onEmotionRef.current?.(score)
           latestScoreRef.current = null
-        }, STATE_FLUSH_MS)
+        }
+      }, STATE_FLUSH_MS)
     }
 
     const init = async () => {
@@ -223,8 +210,6 @@ const WebcamRecorder = ({
         const camera = new Camera(video, {
           onFrame: async () => {
             const now = performance.now()
-            // If the tab is hidden, skip processing to reduce background CPU.
-            if (typeof document !== 'undefined' && document.hidden) return
             // FIX 1: time-based throttle — skip frames within window
             if (now - lastSendRef.current < SEND_THROTTLE_MS) return
             // FIX: concurrency guard — if previous send is still running, skip

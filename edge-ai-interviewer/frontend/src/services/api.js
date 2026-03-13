@@ -1,4 +1,5 @@
 // services/api.js
+import axios from 'axios'
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api').replace(/\/$/, '')
 
@@ -9,20 +10,39 @@ const authHeaders = () => ({
   Authorization: `Bearer ${getToken()}`,
 })
 
-// ── Auth ──────────────────────────────────────────────────────────────────────
+// axios instance used by parts of the app
+const apiClient = axios.create({
+  baseURL: API_BASE,
+  headers: { 'Content-Type': 'application/json' },
+})
 
-// FIX: was ({ username, email, password }) → body had "username" key
-// Backend reads payload.get("name") so it was always None → 400
-export const registerUser = ({ name, email, password }) =>
-  fetch(`${API_BASE}/auth/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, password }),  // ← "name" matches backend
-  }).then(async res => {
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.message || 'Registration failed')
-    return { data }
-  })
+// attach token to requests
+apiClient.interceptors.request.use((config) => {
+  const token = getToken()
+  if (token) {
+    config.headers = config.headers || {}
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status
+    if (status === 401) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      if (window.location.pathname !== '/register') {
+        window.location.href = '/register'
+      }
+      return Promise.reject(new Error('Unauthorized: Invalid or expired token'))
+    }
+    return Promise.reject(error)
+  }
+)
+
+export const registerUser = (payload) => apiClient.post('/auth/register', payload)
 
 export const loginUser = ({ email, password }) =>
   fetch(`${API_BASE}/auth/login`, {

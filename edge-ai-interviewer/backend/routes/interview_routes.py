@@ -23,6 +23,7 @@ from routes.auth_routes import verify_token
 from services.facial_service import facial_service
 from services.speech_service import speech_service
 from services.transcription_service import transcription_service
+from services.transcription_service import EMPTY_TRANSCRIPT_SENTINEL
 from services.nlp_service import nlp_service
 from services.scoring_service import scoring_service
 from services.report_service import report_service
@@ -137,30 +138,69 @@ def submit_interview(user_id):
     else:
         raw_edge = 0.0
 
-    if raw_edge > 0:
-        # FIX: Clamp client-submitted score to [0.1, 0.95].
-        # Previously any value including 1.0 was accepted verbatim,
-        # allowing a client to inject a perfect score and bypass all
-        # server-side facial analysis.
-        facial_score = max(0.1, min(raw_edge, 0.95))
-        facial_result = {"facial_score": facial_score, "metrics": {}}
+    # Client may also provide an edge speech score (from browser analysis)
+    edge_speech_str = request.form.get("edge_speech_score")
+    if edge_speech_str:
+        try:
+            edge_speech = float(edge_speech_str)
+        except (ValueError, TypeError):
+            edge_speech = None
     else:
-        # Fall back to Python backend if browser-side tracking failed or scored 0
-        facial_result = facial_service.analyze_video(video_path)
-        facial_score = facial_result["facial_score"]
+        edge_speech = None
+    # Ensure transcript_result and speech_result always exist with sensible defaults
+    transcript_result = {"transcript": EMPTY_TRANSCRIPT_SENTINEL}
+    speech_result = {"speech_score": 0.83, "metrics": {}}
 
-    # Apply professional floor to all facial scores (ensures 1/100 becomes 10/100)
-    facial_score = max(0.1, min(float(facial_score), 1.0))
+    # Run required heavy ops in parallel: transcription is required for NLP.
+    # If client provided an `edge_facial_score`, skip facial analysis to save CPU.
+    # If client provided `edge_speech_score`, use it instead of running speech analysis.
+    import concurrent.futures
 
-    speech_result = speech_service.analyze_audio(audio_path)
-    transcript_result = transcription_service.transcribe(audio_path)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+        fut_trans = executor.submit(transcription_service.transcribe, audio_path)
+
+        fut_speech = None
+        if edge_speech is None:
+            fut_speech = executor.submit(speech_service.analyze_audio, audio_path)
+
+        fut_facial = None
+        if raw_edge <= 0:
+            fut_facial = executor.submit(facial_service.analyze_video, video_path)
+
+        # Collect results with sensible timeouts
+        try:
+            transcript_result = fut_trans.result(timeout=120)
+        except Exception:
+            transcript_result = {"transcript": "Transcription unavailable. Timeout or error.", "language": "unknown", "duration": 0.0}
+
+        if fut_speech:
+            try:
+                speech_result = fut_speech.result(timeout=60)
+            except Exception:
+                speech_result = {"speech_score": 0.83, "metrics": {"clarity": "Error"}}
+        elif edge_speech is not None:
+            # Use client-provided speech score
+            speech_result = {"speech_score": max(0.0, min(edge_speech, 1.0)), "metrics": {"source": "client"}}
+
+        if fut_facial:
+            try:
+                facial_result = fut_facial.result(timeout=60)
+            except Exception:
+                facial_result = {"facial_score": 0.1, "metrics": {}}
+        else:
+            # Client provided facial score — clamp to safe range
+            facial_score = max(0.1, min(raw_edge, 0.95)) if raw_edge > 0 else 0.1
+            facial_result = {"facial_score": facial_score, "metrics": {"source": "client"}}
+
+        facial_score = facial_result.get("facial_score", 0.1)
+        facial_score = max(0.1, min(float(facial_score), 1.0))
 
     # FIX: Coerce session.skills to "" when None so nlp_service never receives None
     session_skills = session.skills or "" if hasattr(session, "skills") else ""
 
     nlp_result = nlp_service.score_relevance(
         question,
-        transcript_result["transcript"],
+        transcript_result.get("transcript", ""),
         skills=session_skills,
     )
 
@@ -173,7 +213,7 @@ def submit_interview(user_id):
     response = Response(
         session_id=session.id,
         question=question,
-        transcript=transcript_result["transcript"],
+        transcript=transcript_result.get("transcript", ""),
         facial_score=facial_score,
         speech_score=speech_result["speech_score"],
         nlp_score=nlp_result["nlp_score"],

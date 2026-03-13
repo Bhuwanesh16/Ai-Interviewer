@@ -2320,3 +2320,250 @@ TypeError: '<' not supported between instances of 'float' and 'NoneType'
 [2026-03-08 19:57:39,607] INFO in logger: Logging initialized
 [2026-03-08 19:57:39,612] INFO in logger: Logging initialized
 [2026-03-08 19:57:39,612] INFO in logger: Logging initialized
+[2026-03-08 20:57:25,343] INFO in logger: Logging initialized
+[2026-03-08 20:57:25,360] INFO in logger: Logging initialized
+[2026-03-08 20:57:25,360] INFO in logger: Logging initialized
+[2026-03-08 20:59:22,129] INFO in logger: Logging initialized
+[2026-03-08 20:59:22,138] INFO in logger: Logging initialized
+[2026-03-08 20:59:22,138] INFO in logger: Logging initialized
+[2026-03-08 20:59:24,492] INFO in logger: Logging initialized
+[2026-03-08 20:59:24,498] INFO in logger: Logging initialized
+[2026-03-08 20:59:24,498] INFO in logger: Logging initialized
+[2026-03-13 21:22:09,381] INFO in logger: Logging initialized
+[2026-03-13 21:22:09,394] INFO in logger: Logging initialized
+[2026-03-13 21:22:09,394] INFO in logger: Logging initialized
+[2026-03-13 21:22:12,259] INFO in logger: Logging initialized
+[2026-03-13 21:22:12,272] INFO in logger: Logging initialized
+[2026-03-13 21:22:12,272] INFO in logger: Logging initialized
+[2026-03-13 21:34:16,545] INFO in logger: Logging initialized
+[2026-03-13 21:34:16,555] INFO in logger: Logging initialized
+[2026-03-13 21:34:16,555] INFO in logger: Logging initialized
+[2026-03-13 21:34:18,723] INFO in logger: Logging initialized
+[2026-03-13 21:34:18,726] INFO in logger: Logging initialized
+[2026-03-13 21:34:18,726] INFO in logger: Logging initialized
+[2026-03-13 21:49:32,085] INFO in logger: Logging initialized
+[2026-03-13 21:49:32,091] INFO in logger: Logging initialized
+[2026-03-13 21:49:32,091] INFO in logger: Logging initialized
+[2026-03-13 21:49:33,819] ERROR in error_handlers: Unhandled exception: cannot access local variable 'transcript_result' where it is not associated with a value
+[2026-03-13 21:49:33,819] ERROR in error_handlers: Unhandled exception: cannot access local variable 'transcript_result' where it is not associated with a value
+[2026-03-13 21:49:33,824] ERROR in error_handlers: Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 44, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 185, in submit_interview
+    transcript_result.get("transcript"),
+    ^^^^^^^^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'transcript_result' where it is not associated with a value
+
+[2026-03-13 21:49:33,824] ERROR in error_handlers: Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 44, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 185, in submit_interview
+    transcript_result.get("transcript"),
+    ^^^^^^^^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'transcript_result' where it is not associated with a value
+
+[2026-03-13 21:50:18,071] ERROR in error_handlers: Unhandled exception: cannot access local variable 'transcript_result' where it is not associated with a value
+[2026-03-13 21:50:18,071] ERROR in error_handlers: Unhandled exception: cannot access local variable 'transcript_result' where it is not associated with a value
+[2026-03-13 21:50:18,085] ERROR in error_handlers: Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 44, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 185, in submit_interview
+    transcript_result.get("transcript"),
+    ^^^^^^^^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'transcript_result' where it is not associated with a value
+
+[2026-03-13 21:50:18,085] ERROR in error_handlers: Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 44, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 185, in submit_interview
+    transcript_result.get("transcript"),
+    ^^^^^^^^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'transcript_result' where it is not associated with a value
+
+[2026-03-13 21:50:23,299] ERROR in error_handlers: Unhandled exception: cannot access local variable 'transcript_result' where it is not associated with a value
+[2026-03-13 21:50:23,299] ERROR in error_handlers: Unhandled exception: cannot access local variable 'transcript_result' where it is not associated with a value
+[2026-03-13 21:50:23,307] ERROR in error_handlers: Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 44, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 185, in submit_interview
+    transcript_result.get("transcript"),
+    ^^^^^^^^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'transcript_result' where it is not associated with a value
+
+[2026-03-13 21:50:23,307] ERROR in error_handlers: Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 44, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 185, in submit_interview
+    transcript_result.get("transcript"),
+    ^^^^^^^^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'transcript_result' where it is not associated with a value
+
+[2026-03-13 21:50:37,803] ERROR in error_handlers: Unhandled exception: cannot access local variable 'transcript_result' where it is not associated with a value
+[2026-03-13 21:50:37,803] ERROR in error_handlers: Unhandled exception: cannot access local variable 'transcript_result' where it is not associated with a value
+[2026-03-13 21:50:37,811] ERROR in error_handlers: Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 44, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 185, in submit_interview
+    transcript_result.get("transcript"),
+    ^^^^^^^^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'transcript_result' where it is not associated with a value
+
+[2026-03-13 21:50:37,811] ERROR in error_handlers: Traceback (most recent call last):
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "d:\AiInterviewer\Ai-Interviewer\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 44, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 185, in submit_interview
+    transcript_result.get("transcript"),
+    ^^^^^^^^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'transcript_result' where it is not associated with a value
+
+[2026-03-13 21:51:15,279] INFO in logger: Logging initialized
+[2026-03-13 21:51:15,283] INFO in logger: Logging initialized
+[2026-03-13 21:51:15,283] INFO in logger: Logging initialized
+[2026-03-13 22:38:17,274] INFO in logger: Logging initialized
+[2026-03-13 22:38:17,282] INFO in logger: Logging initialized
+[2026-03-13 22:38:17,282] INFO in logger: Logging initialized
+[2026-03-13 22:38:18,698] INFO in logger: Logging initialized
+[2026-03-13 22:38:18,704] INFO in logger: Logging initialized
+[2026-03-13 22:38:18,704] INFO in logger: Logging initialized
+[2026-03-13 22:41:58,154] ERROR in error_handlers: Unhandled exception: local variable 'transcript_result' referenced before assignment
+[2026-03-13 22:41:58,154] ERROR in error_handlers: Unhandled exception: local variable 'transcript_result' referenced before assignment
+[2026-03-13 22:41:59,839] ERROR in error_handlers: Traceback (most recent call last):
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\venv\lib\site-packages\flask\app.py", line 870, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\venv\lib\site-packages\flask\app.py", line 855, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 44, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 185, in submit_interview
+    transcript_result.get("transcript"),
+UnboundLocalError: local variable 'transcript_result' referenced before assignment
+
+[2026-03-13 22:41:59,839] ERROR in error_handlers: Traceback (most recent call last):
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\venv\lib\site-packages\flask\app.py", line 870, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\venv\lib\site-packages\flask\app.py", line 855, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 44, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 185, in submit_interview
+    transcript_result.get("transcript"),
+UnboundLocalError: local variable 'transcript_result' referenced before assignment
+
+[2026-03-13 22:42:23,702] ERROR in error_handlers: Unhandled exception: local variable 'transcript_result' referenced before assignment
+[2026-03-13 22:42:23,702] ERROR in error_handlers: Unhandled exception: local variable 'transcript_result' referenced before assignment
+[2026-03-13 22:42:23,705] ERROR in error_handlers: Traceback (most recent call last):
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\venv\lib\site-packages\flask\app.py", line 870, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\venv\lib\site-packages\flask\app.py", line 855, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 44, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 185, in submit_interview
+    transcript_result.get("transcript"),
+UnboundLocalError: local variable 'transcript_result' referenced before assignment
+
+[2026-03-13 22:42:23,705] ERROR in error_handlers: Traceback (most recent call last):
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\venv\lib\site-packages\flask\app.py", line 870, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\venv\lib\site-packages\flask\app.py", line 855, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 44, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 185, in submit_interview
+    transcript_result.get("transcript"),
+UnboundLocalError: local variable 'transcript_result' referenced before assignment
+
+[2026-03-13 22:43:56,398] ERROR in error_handlers: Unhandled exception: local variable 'transcript_result' referenced before assignment
+[2026-03-13 22:43:56,398] ERROR in error_handlers: Unhandled exception: local variable 'transcript_result' referenced before assignment
+[2026-03-13 22:43:56,444] ERROR in error_handlers: Traceback (most recent call last):
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\venv\lib\site-packages\flask\app.py", line 870, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\venv\lib\site-packages\flask\app.py", line 855, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 44, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 185, in submit_interview
+    transcript_result.get("transcript"),
+UnboundLocalError: local variable 'transcript_result' referenced before assignment
+
+[2026-03-13 22:43:56,444] ERROR in error_handlers: Traceback (most recent call last):
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\venv\lib\site-packages\flask\app.py", line 870, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\venv\lib\site-packages\flask\app.py", line 855, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\utils\auth_decorator.py", line 44, in decorated
+    return f(user_id, *args, **kwargs)
+  File "D:\AiInterviewer\Ai-Interviewer\edge-ai-interviewer\backend\routes\interview_routes.py", line 185, in submit_interview
+    transcript_result.get("transcript"),
+UnboundLocalError: local variable 'transcript_result' referenced before assignment
+
+[2026-03-13 22:45:18,200] INFO in logger: Logging initialized
+[2026-03-13 22:45:18,217] INFO in logger: Logging initialized
+[2026-03-13 22:45:18,217] INFO in logger: Logging initialized
+[2026-03-13 22:47:36,976] INFO in logger: Logging initialized
+[2026-03-13 22:47:36,993] INFO in logger: Logging initialized
+[2026-03-13 22:47:36,993] INFO in logger: Logging initialized
+[2026-03-13 22:52:21,960] INFO in logger: Logging initialized
+[2026-03-13 22:52:21,960] INFO in logger: Logging initialized
+[2026-03-13 22:52:21,960] INFO in logger: Logging initialized
+[2026-03-13 22:53:36,975] INFO in logger: Logging initialized
+[2026-03-13 22:53:36,975] INFO in logger: Logging initialized
+[2026-03-13 22:53:36,975] INFO in logger: Logging initialized
+[2026-03-13 22:57:41,343] INFO in logger: Logging initialized
+[2026-03-13 22:57:41,343] INFO in logger: Logging initialized
+[2026-03-13 22:57:41,343] INFO in logger: Logging initialized
+[2026-03-13 22:57:52,177] INFO in logger: Logging initialized
+[2026-03-13 22:57:52,177] INFO in logger: Logging initialized
+[2026-03-13 22:57:52,177] INFO in logger: Logging initialized
+[2026-03-13 23:20:26,479] INFO in logger: Logging initialized
+[2026-03-13 23:20:26,484] INFO in logger: Logging initialized
+[2026-03-13 23:20:26,484] INFO in logger: Logging initialized
+[2026-03-13 23:21:23,379] INFO in logger: Logging initialized
+[2026-03-13 23:21:23,383] INFO in logger: Logging initialized
+[2026-03-13 23:21:23,383] INFO in logger: Logging initialized
+[2026-03-13 23:25:27,303] INFO in logger: Logging initialized
+[2026-03-13 23:25:27,319] INFO in logger: Logging initialized
+[2026-03-13 23:25:27,319] INFO in logger: Logging initialized
+[2026-03-13 23:26:10,036] INFO in logger: Logging initialized
+[2026-03-13 23:26:10,041] INFO in logger: Logging initialized
+[2026-03-13 23:26:10,041] INFO in logger: Logging initialized

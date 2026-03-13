@@ -19,15 +19,16 @@ import os
 from datetime import timedelta
 
 
-class Config:
-    """Base configuration shared across all environments."""
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+
+class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "change-this-secret-in-prod")
 
-    # Database — defaults to local SQLite, override with DATABASE_URL for Postgres
+    # Database — now located under backend/data by default
     SQLALCHEMY_DATABASE_URI = os.getenv(
         "DATABASE_URL",
-        "sqlite:///edge_ai_interviewer.db",
+        f"sqlite:///{os.path.join(BASE_DIR, 'data', 'edge_ai_interviewer.db')}",
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
@@ -38,29 +39,25 @@ class Config:
     # CORS
     CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173")
 
-    # FIX: Limit upload size to 500 MB to prevent memory exhaustion from
-    # large video uploads. Flask returns 413 if exceeded.
+    # Limit upload size (default 500 MB)
     MAX_CONTENT_LENGTH = int(os.getenv("MAX_CONTENT_LENGTH", 500 * 1024 * 1024))
 
-    # Upload directory (used by save_uploaded_video/audio helpers)
-    UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "uploads")
+    # Upload folders — split video/audio
+    UPLOAD_FOLDER_VIDEO = os.getenv("UPLOAD_FOLDER_VIDEO", os.path.join(BASE_DIR, 'storage', 'videos'))
+    UPLOAD_FOLDER_AUDIO = os.getenv("UPLOAD_FOLDER_AUDIO", os.path.join(BASE_DIR, 'storage', 'audios'))
 
     # Logging
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
-    # FIX: Secure cookie settings — prevents session cookies being sent
-    # over plain HTTP in production and blocks JS access to the cookie.
+    # Security / cookies
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
 
-    # Security headers — applied by app.py's after_request hook
     SECURITY_HEADERS = {
         "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
         "X-Content-Type-Options": "nosniff",
         "X-Frame-Options": "SAMEORIGIN",
         "X-XSS-Protection": "1; mode=block",
-        # FIX: Relaxed CSP — original blocked all inline scripts which breaks
-        # Vite HMR and React dev tools. Tightened further in ProdConfig.
         "Content-Security-Policy": (
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline'; "
@@ -72,12 +69,22 @@ class Config:
         ),
     }
 
+    @staticmethod
+    def init_app(app):
+        # Ensure storage folders exist at startup
+        os.makedirs(Config.UPLOAD_FOLDER_VIDEO, exist_ok=True)
+        os.makedirs(Config.UPLOAD_FOLDER_AUDIO, exist_ok=True)
+
+        # Ensure data and logs directories exist so SQLite can create the DB file
+        data_dir = os.path.join(BASE_DIR, 'data')
+        logs_dir = os.path.join(BASE_DIR, 'logs')
+        os.makedirs(data_dir, exist_ok=True)
+        os.makedirs(logs_dir, exist_ok=True)
+
 
 class DevConfig(Config):
     DEBUG = True
-    SESSION_COOKIE_SECURE = False   # Allow cookies over HTTP in local dev
-
-    # Even more relaxed CSP for Vite HMR websocket and eval() used by source maps
+    SESSION_COOKIE_SECURE = False
     SECURITY_HEADERS = {
         **Config.SECURITY_HEADERS,
         "Content-Security-Policy": (
@@ -94,9 +101,7 @@ class DevConfig(Config):
 
 class ProdConfig(Config):
     DEBUG = False
-    SESSION_COOKIE_SECURE = True    # Require HTTPS for cookies in production
-
-    # Strict CSP for production — no inline scripts, no eval
+    SESSION_COOKIE_SECURE = True
     SECURITY_HEADERS = {
         **Config.SECURITY_HEADERS,
         "Content-Security-Policy": (
