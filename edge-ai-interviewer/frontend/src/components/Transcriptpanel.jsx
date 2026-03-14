@@ -21,6 +21,7 @@ const FAILURE_MARKERS = [
   '(Audio file missing',
   '(Speech parsing error',
   'openai-whisper not installed',
+  'openai-whisper is not installed',
   'No local or online ASR backends',
 ]
 

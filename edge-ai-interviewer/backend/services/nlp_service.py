@@ -65,6 +65,7 @@ class NLPService:
             "(Speech parsing error",
             "(Audio file missing)",
             "openai-whisper not installed",
+            "openai-whisper is not installed",
             EMPTY_TRANSCRIPT_SENTINEL,          # <-- fix: silent/empty audio
         ]
         is_fallback = any(marker in (answer or "") for marker in fallback_markers)

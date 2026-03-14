@@ -35,6 +35,7 @@ _FALLBACK_TRANSCRIPT_MARKERS = [
     "(Speech parsing error",
     "(Audio file missing)",
     "openai-whisper not installed",
+    "openai-whisper is not installed",
     EMPTY_TRANSCRIPT_SENTINEL,
 ]
 
