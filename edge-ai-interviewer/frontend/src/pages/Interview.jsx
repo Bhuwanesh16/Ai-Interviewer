@@ -251,7 +251,7 @@ const Interview = () => {
       // Brief pause so user sees "ready" before advancing
       setTimeout(() => {
         setGenStatus('')
-        setSetupStep(2)
+        setIsSetupComplete(true)
         setLoading(false)
       }, 600)
 
@@ -261,13 +261,12 @@ const Interview = () => {
       setGenStatus('')
       setQuestions([DEFAULT_QUESTION])
       setQuestionSource('fallback')
-      setSetupStep(2)
+      setIsSetupComplete(true)
       setLoading(false)
     }
   }
 
   const handleStartInterview  = () => setIsSetupComplete(true)
-  const handleBackToConfig    = () => setSetupStep(1)
   const handleResetSetup      = () => {
     if (isRecording) return
     setIsSetupComplete(false)
@@ -296,19 +295,17 @@ const Interview = () => {
       }}>
         {/* Step progress bar */}
         <div style={{ display: 'flex', gap: '4px', position: 'absolute', top: 0, left: 0, right: 0, height: '4px' }}>
-          <div style={{ flex: 1, background: setupStep >= 1 ? '#0ea5e9' : '#e2e8f0', transition: 'background 0.3s' }} />
-          <div style={{ flex: 1, background: setupStep >= 2 ? '#0ea5e9' : '#e2e8f0', transition: 'background 0.3s' }} />
+          <div style={{ flex: 1, background: '#0ea5e9', transition: 'background 0.3s' }} />
         </div>
 
         <AnimatePresence mode="wait">
-          {setupStep === 1 ? (
-            <motion.div key="step1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}>
-              <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-                <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '2.5rem', fontWeight: 800, letterSpacing: '-0.04em', color: '#0f172a', marginBottom: '0.75rem' }}>
-                  Interview AI
-                </h2>
-                <p style={{ color: '#64748b', fontSize: '1rem' }}>Step 1: Configure your professional session</p>
-              </div>
+          <motion.div key="step1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} transition={{ duration: 0.3 }}>
+            <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+              <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '2.5rem', fontWeight: 800, letterSpacing: '-0.04em', color: '#0f172a', marginBottom: '0.75rem' }}>
+                Interview AI
+              </h2>
+              <p style={{ color: '#64748b', fontSize: '1rem' }}>Configure your professional session</p>
+            </div>
 
               <form onSubmit={handleSetupSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
@@ -447,36 +444,11 @@ const Interview = () => {
                     transition: 'all 0.25s ease',
                   }}>
                   {loading
-                    ? <span style={{ opacity: 0.7 }}>Generating...</span>
-                    : <><span>Generate My Questions</span><span>→</span></>
+                    ? <span style={{ opacity: 0.7 }}>Starting Interview...</span>
+                    : <><span>Start Interview</span><span>→</span></>
                   }
                 </motion.button>
               </form>
-            </motion.div>
-          ) : (
-            <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }}>
-              <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                <h2 style={{ fontFamily: "'Syne', sans-serif", fontSize: '2rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.5rem' }}>Curated Set Ready</h2>
-                <p style={{ color: '#64748b' }}>Review your AI-generated questions before entering the room</p>
-              </div>
-
-              <div style={{ background: '#f8fafc', borderRadius: '1.5rem', padding: '1.5rem', maxHeight: '400px', overflowY: 'auto', border: '1px solid #e2e8f0', marginBottom: '2rem' }}>
-                {questions.map((q, i) => (
-                  <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-                    style={{ padding: '1rem', background: '#fff', borderRadius: '1rem', marginBottom: '0.75rem', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', display: 'flex', gap: '1rem' }}>
-                    <span style={{ fontWeight: 800, color: '#0ea5e9', fontSize: '0.9rem', fontFamily: "'Space Mono', monospace" }}>{String(i + 1).padStart(2, '0')}</span>
-                    <p style={{ fontSize: '0.95rem', color: '#334155', margin: 0 }}>{q}</p>
-                  </motion.div>
-                ))}
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem' }}>
-                <button onClick={handleBackToConfig} style={{ padding: '1.125rem', borderRadius: '1rem', background: '#f1f5f9', color: '#475569', fontWeight: 700, border: 'none', cursor: 'pointer' }}>← Adjust</button>
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={handleStartInterview}
-                  style={{ padding: '1.125rem', borderRadius: '1rem', background: '#0ea5e9', color: '#fff', fontWeight: 800, fontSize: '1.1rem', border: 'none', cursor: 'pointer', boxShadow: '0 8px 16px rgba(14,165,233,0.3)' }}>
-                  Enter Interview Room ✦
-                </motion.button>
-              </div>
             </motion.div>
           )}
         </AnimatePresence>
