@@ -7,7 +7,7 @@ import AudioWave from '../components/AudioWave'
 import RealTimeFeedback from '../components/RealTimeFeedback'
 import LoadingScreen from '../components/LoadingScreen'
 import StatusPill from '../components/StatusPill'
-import { startInterview, submitInterview, generateQuestions } from '../services/api'
+import { startInterview, submitInterview, generateQuestions, generateFollowup } from '../services/api'
 
 const DEFAULT_QUESTION = 'Tell me about a time you solved a challenging technical problem.'
 
@@ -42,6 +42,7 @@ const Interview = () => {
   const [faceModelOk, setFaceModelOk] = useState(null)
 
   const [isSetupComplete, setIsSetupComplete] = useState(false)
+  const [hasStartedSession, setHasStartedSession] = useState(false)
   const [role, setRole]             = useState('Software Engineer')
   const [skills, setSkills]         = useState('')
   const [level, setLevel]           = useState('Intermediate')
@@ -56,10 +57,15 @@ const Interview = () => {
   const [mediaStream, setMediaStream] = useState(null)
 
   const [liveData, setLiveData]   = useState(INITIAL_LIVE)
+  const [pendingAnswers, setPendingAnswers] = useState([]) // one per question, stored client-side
+  const [integrityIssue, setIntegrityIssue] = useState(null)
+  const integrityIssueRef = useRef(null)
 
   // ── Generation progress state ─────────────────────────────────────────────
   const [genStatus, setGenStatus] = useState('')
   const genTimersRef = useRef([])
+  const audioRecorderRef = useRef(null)
+  const audioChunksRef = useRef([])
 
   const emotionScoresRef = useRef([])
   const speechScoresRef  = useRef([])
@@ -144,6 +150,24 @@ const Interview = () => {
       await ensureSession()
       if (!mediaStream) return
       const recorder = new MediaRecorder(mediaStream)
+      const audioTracks = mediaStream.getAudioTracks?.() || []
+      if (audioTracks.length > 0) {
+        try {
+          const audioStream = new MediaStream(audioTracks)
+          audioChunksRef.current = []
+          audioRecorderRef.current = new MediaRecorder(audioStream)
+          audioRecorderRef.current.ondataavailable = (e) => {
+            if (e.data?.size > 0) audioChunksRef.current.push(e.data)
+          }
+        } catch (e) {
+          audioRecorderRef.current = null
+          audioChunksRef.current = []
+          console.warn('Audio recorder init failed, falling back to combined blob.', e)
+        }
+      } else {
+        audioRecorderRef.current = null
+        audioChunksRef.current = []
+      }
       chunksRef.current = []
       emotionScoresRef.current = []
       speechScoresRef.current  = []
@@ -155,7 +179,9 @@ const Interview = () => {
         setPhase('processing')
         try {
           const blob    = new Blob(chunksRef.current, { type: 'video/webm' })
-          const session = await ensureSession()
+          const audioBlob = audioChunksRef.current.length > 0
+            ? new Blob(audioChunksRef.current, { type: 'audio/webm' })
+            : blob
 
           const avgEmotionScore = emotionScoresRef.current.length > 0
             ? emotionScoresRef.current.reduce((a, b) => a + b, 0) / emotionScoresRef.current.length
@@ -164,33 +190,27 @@ const Interview = () => {
             ? speechScoresRef.current.reduce((a, b) => a + b, 0) / speechScoresRef.current.length
             : 0
 
-          const formData = new FormData()
-          formData.append('session_id', session)
-          formData.append('question', question)
-          formData.append('question_index', currentQuestionIndex)
-          formData.append('video', blob, 'response.webm')
-          formData.append('audio', blob, 'response.webm')
-          formData.append('edge_facial_score', avgEmotionScore.toString())
-          formData.append('edge_speech_score', avgSpeechScore.toString())
+          // Store answer locally; do NOT submit to backend until the final step.
+          setPendingAnswers(prev => {
+            const arr = [...prev]
+            arr[currentQuestionIndex] = {
+              question,
+              videoBlob: blob,
+              audioBlob,
+              edgeFacialScore: avgEmotionScore,
+              edgeSpeechScore: avgSpeechScore,
+            }
+            return arr
+          })
 
-          const { data } = await submitInterview(formData)
-
+          // Move to next question automatically; user can navigate back with arrows.
           if (currentQuestionIndex < questions.length - 1) {
             setCurrentQuestionIndex(prev => prev + 1)
-            setLiveData(INITIAL_LIVE)
-            setLoading(false)
-            setPhase('idle')
-          } else {
-            navigate(`/result/${data.session_id}`, {
-              state: {
-                scores:      data.scores,
-                transcript:  data.transcript,
-                feedback:    data.feedback,
-                suggestions: data.suggestions,
-                metrics:     data.metrics,
-              },
-            })
           }
+
+          setLiveData(INITIAL_LIVE)
+          setLoading(false)
+          setPhase('idle')
         } catch (err) {
           console.error(err)
           setLoading(false)
@@ -200,6 +220,7 @@ const Interview = () => {
 
       mediaRecorderRef.current = recorder
       recorder.start()
+      try { audioRecorderRef.current?.start() } catch { /* ignore */ }
       setTimer(0)
       setIsRecording(true)
       setPhase('recording')
@@ -212,6 +233,7 @@ const Interview = () => {
     if (mediaRecorderRef.current && isRecording) {
       setIsRecording(false)
       setPhase('idle')
+      try { audioRecorderRef.current?.stop() } catch { /* ignore */ }
       mediaRecorderRef.current.stop()
     }
   }
@@ -252,6 +274,7 @@ const Interview = () => {
       setTimeout(() => {
         setGenStatus('')
         setIsSetupComplete(true)
+        setHasStartedSession(false)
         setLoading(false)
       }, 600)
 
@@ -262,18 +285,71 @@ const Interview = () => {
       setQuestions([DEFAULT_QUESTION])
       setQuestionSource('fallback')
       setIsSetupComplete(true)
+      setHasStartedSession(false)
       setLoading(false)
     }
   }
 
-  const handleStartInterview  = () => setIsSetupComplete(true)
+  const handleStartInterview  = () => setHasStartedSession(true)
   const handleResetSetup      = () => {
     if (isRecording) return
     setIsSetupComplete(false)
+    setHasStartedSession(false)
     setSetupStep(1)
     setSessionId(null)
     setCurrentQuestionIndex(0)
     setLiveData(INITIAL_LIVE)
+    setPendingAnswers([])
+    setIntegrityIssue(null)
+    integrityIssueRef.current = null
+  }
+
+  const allAnswered = questions.length > 0 && pendingAnswers.filter(Boolean).length >= questions.length
+
+  const handleFinalSubmit = async () => {
+    try {
+      setLoading(true)
+      setPhase('processing')
+      const session = await ensureSession()
+
+      // Faster finalization: submit with limited concurrency.
+      // Also avoid uploading video when edge facial score exists (saves bandwidth/time).
+      const concurrency = 2
+      const indices = Array.from({ length: questions.length }, (_, i) => i).filter(i => !!pendingAnswers[i])
+
+      const submitOne = async (i) => {
+        const a = pendingAnswers[i]
+        const formData = new FormData()
+        formData.append('session_id', session)
+        formData.append('question', a.question)
+        formData.append('question_index', i)
+        formData.append('audio', a.audioBlob, `response_${i + 1}_audio.webm`)
+        formData.append('edge_facial_score', String(a.edgeFacialScore ?? 0))
+        formData.append('edge_speech_score', String(a.edgeSpeechScore ?? 0))
+
+        // Only upload video if we *need* server-side facial analysis.
+        if (!a.edgeFacialScore || a.edgeFacialScore <= 0) {
+          formData.append('video', a.videoBlob, `response_${i + 1}.webm`)
+        }
+
+        await submitInterview(formData)
+      }
+
+      for (let start = 0; start < indices.length; start += concurrency) {
+        const batch = indices.slice(start, start + concurrency)
+        await Promise.all(batch.map(submitOne))
+      }
+
+      if (integrityIssueRef.current) {
+        navigate('/integrity-warning', { state: { sessionId: session, issue: integrityIssueRef.current } })
+      } else {
+        navigate(`/result/${session}`)
+      }
+    } catch (err) {
+      console.error(err)
+      setLoading(false)
+      setPhase('idle')
+    }
   }
 
   const ROLES = [
@@ -450,8 +526,90 @@ const Interview = () => {
                 </motion.button>
               </form>
             </motion.div>
-          )}
         </AnimatePresence>
+      </div>
+    )
+  }
+
+  // ── Session start screen (professional flow) ────────────────────────────────
+  // The user configures the interview first, then explicitly starts the session.
+  // Only after clicking "Start Interview" do we show the question card + controls.
+  if (!hasStartedSession) {
+    return (
+      <div style={{ maxWidth: 900, margin: '3.5rem auto', padding: '0 1.5rem' }}>
+        <AnimatePresence>{loading && <LoadingScreen />}</AnimatePresence>
+
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{
+            borderRadius: '1.5rem',
+            border: '1px solid rgba(148,163,184,0.25)',
+            background: 'rgba(255,255,255,0.95)',
+            padding: '2rem',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
+          }}
+        >
+          <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.65rem', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#0ea5e9', marginBottom: '0.5rem' }}>
+            Session ready
+          </p>
+          <h1 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 'clamp(1.5rem,4vw,2.1rem)', letterSpacing: '-0.04em', color: '#0f172a', marginTop: 0 }}>
+            {effectiveRole} · {LEVEL_COLORS[level]?.label || 'Mid'} interview
+          </h1>
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '1rem' }}>
+            <span style={{ padding: '0.35rem 0.75rem', borderRadius: 99, fontSize: '0.75rem', background: 'rgba(148,163,184,0.12)', color: '#334155' }}>
+              Questions: <b>{questions.length}</b>
+            </span>
+            <span style={{ padding: '0.35rem 0.75rem', borderRadius: 99, fontSize: '0.75rem', background: questionSource === 'llm' ? 'rgba(139,92,246,0.10)' : 'rgba(148,163,184,0.10)', color: questionSource === 'llm' ? '#7c3aed' : '#64748b' }}>
+              Source: <b>{questionSource === 'llm' ? 'AI' : 'Static'}</b>
+            </span>
+          </div>
+
+          <p style={{ marginTop: '1.25rem', color: '#64748b', lineHeight: 1.7 }}>
+            When you click <b>Start Interview</b>, you’ll see one question at a time with arrows to move next/previous.
+            Your final report will be generated after you submit the last question.
+          </p>
+
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '1.5rem' }}>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleStartInterview}
+              style={{
+                padding: '0.85rem 1.25rem',
+                borderRadius: '0.9rem',
+                border: 'none',
+                background: 'linear-gradient(135deg, #0ea5e9, #6366f1)',
+                color: '#fff',
+                fontWeight: 800,
+                fontSize: '1rem',
+                cursor: 'pointer',
+                boxShadow: '0 10px 25px -8px rgba(14,165,233,0.45)',
+              }}
+            >
+              Start Interview →
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleResetSetup}
+              style={{
+                padding: '0.85rem 1.25rem',
+                borderRadius: '0.9rem',
+                border: '1px solid rgba(148,163,184,0.35)',
+                background: 'rgba(255,255,255,0.9)',
+                color: '#64748b',
+                fontWeight: 700,
+                fontSize: '1rem',
+                cursor: 'pointer',
+              }}
+            >
+              Edit details
+            </motion.button>
+          </div>
+        </motion.div>
       </div>
     )
   }
@@ -522,6 +680,35 @@ const Interview = () => {
             currentIdx={currentQuestionIndex}
             totalQuestions={questions.length}
           />
+
+          {/* Final submit appears once all questions have recordings */}
+          {!isRecording && allAnswered && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: '1rem' }}>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleFinalSubmit}
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  padding: '0.95rem 1.25rem',
+                  borderRadius: '1rem',
+                  border: 'none',
+                  background: loading
+                    ? 'rgba(14,165,233,0.35)'
+                    : 'linear-gradient(135deg, #0ea5e9, #6366f1)',
+                  color: loading ? '#94a3b8' : '#fff',
+                  fontWeight: 900,
+                  fontSize: '1rem',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  boxShadow: loading ? 'none' : '0 10px 25px -8px rgba(14,165,233,0.45)',
+                }}
+              >
+                Final Submit & Analyze →
+              </motion.button>
+            </motion.div>
+          )}
+
           {isRecording && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: '1.25rem' }}>
               <RealTimeFeedback
@@ -539,6 +726,15 @@ const Interview = () => {
             setMediaStream={setMediaStream}
             onModelStatus={setFaceModelOk}
             onEmotionScore={handleEmotionScore}
+            onIntegrityViolation={(issue) => {
+              // Flag and terminate session if a second person appears.
+              integrityIssueRef.current = issue
+              setIntegrityIssue(issue)
+              // Stop recording immediately if active.
+              if (isRecordingRef.current) {
+                try { handleStop() } catch { /* ignore */ }
+              }
+            }}
           />
           <AudioWave
             mediaStream={mediaStream}

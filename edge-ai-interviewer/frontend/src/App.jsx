@@ -3,6 +3,7 @@ import Home from './pages/Home'
 import Register from './pages/Register'
 import Interview from './pages/Interview'
 import Result from './pages/Result'
+import IntegrityWarning from './pages/IntegrityWarning'
 import Navbar from './components/Navbar'
 import ErrorBoundary from './components/ErrorBoundary'
 
@@ -24,6 +25,7 @@ function App() {
               <Route path="/register"            element={<Register />} />
               <Route path="/interview"           element={<Interview />} />
               <Route path="/result/:sessionId"   element={<Result />} />
+              <Route path="/integrity-warning"   element={<IntegrityWarning />} />
             </Routes>
           </ErrorBoundary>
         </main>

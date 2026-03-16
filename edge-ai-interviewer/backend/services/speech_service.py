@@ -37,7 +37,8 @@ class SpeechAnalysisService:
 
         try:
             # Load the audio file
-            y, sr = librosa.load(audio_path, sr=None)
+            # Performance: only analyze the first 30 seconds.
+            y, sr = librosa.load(audio_path, sr=None, duration=30)
 
             # If the audio is extremely short or empty, return a low score
             if len(y) == 0:

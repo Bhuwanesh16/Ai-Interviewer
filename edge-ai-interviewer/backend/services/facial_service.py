@@ -63,8 +63,12 @@ class FacialAnalysisService:
         eye_contact_scores = []
         head_stability_scores = []
 
-        # Sample frames to process faster
-        frame_skip = 5
+        # Sample frames to process faster:
+        # - aim for ~1 frame per second (if fps is known)
+        # - hard-cap the total number of processed frames
+        fps = cap.get(cv2.CAP_PROP_FPS) or 0
+        frame_skip = int(max(1, round(fps))) if fps > 0 else 5
+        max_processed_frames = 30
         frame_count = 0
 
         while cap.isOpened():
@@ -77,6 +81,8 @@ class FacialAnalysisService:
                 continue
 
             total_frames += 1
+            if total_frames >= max_processed_frames:
+                break
             h, w, _ = frame.shape
 
             # Convert the BGR image to RGB before processing

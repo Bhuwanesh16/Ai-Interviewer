@@ -25,6 +25,20 @@ OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL    = os.environ.get("OLLAMA_MODEL", "phi3")
 OLLAMA_TIMEOUT  = int(os.environ.get("OLLAMA_TIMEOUT", "120"))
 
+# Hard cap for question generation. If phi3 takes longer than this, we fall back
+# to the predefined question banks to keep the UI responsive.
+# Reduced to 15s for snappier UX.
+QUESTION_GEN_TIMEOUT_SECONDS = int(os.environ.get("QUESTION_GEN_TIMEOUT", "15"))
+
+# Simple always-available fallback bank (used on phi3 errors/timeouts).
+FALLBACK_QUESTIONS = [
+    "Tell me about yourself.",
+    "What are your strengths and weaknesses?",
+    "Describe a challenging project you worked on.",
+    "Why do you want this role?",
+    "Explain a difficult technical concept you recently learned.",
+]
+
 OLLAMA_GENERATE_URL = f"{OLLAMA_BASE_URL}/api/generate"
 OLLAMA_TAGS_URL     = f"{OLLAMA_BASE_URL}/api/tags"
 
@@ -430,7 +444,11 @@ GENERIC_FALLBACK = [
 
 def _get_fallback(experience: str, n: int, role: str = "Software Engineer") -> list:
     level_key = experience.lower().strip()
-    role_bank = ROLE_FALLBACK_BANKS.get(role)
+    # Special-case custom roles to use generic questions directly.
+    if role.lower().startswith("other"):
+        role_bank = None
+    else:
+        role_bank = ROLE_FALLBACK_BANKS.get(role)
 
     if not role_bank:
         for key in ROLE_FALLBACK_BANKS:
@@ -439,9 +457,10 @@ def _get_fallback(experience: str, n: int, role: str = "Software Engineer") -> l
                 break
 
     if not role_bank:
-        role_bank = ROLE_FALLBACK_BANKS["Software Engineer"]
-
-    bank     = role_bank.get(level_key, GENERIC_FALLBACK)
+        # Default to generic bank for unknown/custom roles.
+        bank = GENERIC_FALLBACK
+    else:
+        bank = role_bank.get(level_key, GENERIC_FALLBACK)
     shuffled = bank.copy()
     random.shuffle(shuffled)
     while len(shuffled) < n:
@@ -475,6 +494,7 @@ def generate_questions(role: str, experience: str, skills: str, question_volume:
     )
 
     try:
+        timeout_s = min(max(1, QUESTION_GEN_TIMEOUT_SECONDS), max(1, OLLAMA_TIMEOUT))
         response = requests.post(
             OLLAMA_GENERATE_URL,
             json={
@@ -490,7 +510,7 @@ def generate_questions(role: str, experience: str, skills: str, question_volume:
                     "stop": ["[END]", "---", "Output:", "Rules:", "Note:", "<|end|>"],
                 },
             },
-            timeout=OLLAMA_TIMEOUT,
+            timeout=timeout_s,
         )
         response.raise_for_status()
         raw       = response.json().get("response", "")
@@ -506,20 +526,77 @@ def generate_questions(role: str, experience: str, skills: str, question_volume:
         return _get_fallback(experience, question_volume, role)
 
     except requests.exceptions.Timeout:
-        logger.warning(f"phi3 timed out after {OLLAMA_TIMEOUT}s — using fallback")
+        logger.warning(f"phi3 timed out after {min(max(1, QUESTION_GEN_TIMEOUT_SECONDS), max(1, OLLAMA_TIMEOUT))}s — using fallback")
         global _ollama_available
         _ollama_available = None
-        return _get_fallback(experience, question_volume, role)
+        # Use the simple fallback bank first, then pad with role-specific bank if needed.
+        out = [random.choice(FALLBACK_QUESTIONS) for _ in range(question_volume)]
+        if len(out) < question_volume:
+            out += _get_fallback(experience, question_volume - len(out), role)
+        return out[:question_volume] if out else [random.choice(FALLBACK_QUESTIONS)]
 
     except Exception as exc:
         logger.warning(f"Question generation failed ({exc}) — using fallback")
-        return _get_fallback(experience, question_volume, role)
+        out = [random.choice(FALLBACK_QUESTIONS) for _ in range(question_volume)]
+        if len(out) < question_volume:
+            out += _get_fallback(experience, question_volume - len(out), role)
+        return out[:question_volume] if out else [random.choice(FALLBACK_QUESTIONS)]
+
+
+def generate_questions_with_source(
+    *,
+    role: str,
+    experience: str,
+    skills: str,
+    question_volume: int,
+    force_fallback: bool = False,
+) -> tuple[list, str]:
+    """
+    Generate questions and return (questions, source).
+    source is "llm" when phi3 succeeds within timeout, otherwise "fallback".
+    """
+    question_volume = max(1, min(int(question_volume), 20))
+
+    if force_fallback:
+        return _get_fallback(experience, question_volume, role), "fallback"
+
+    if not _check_ollama_available():
+        logger.info(f"Ollama unavailable — using fallback bank for {role} ({experience})")
+        qs = _get_fallback(experience, question_volume, role)
+        random.shuffle(qs)
+        return qs, "fallback"
+
+    questions = generate_questions(
+        role=role,
+        experience=experience,
+        skills=skills,
+        question_volume=question_volume,
+    )
+
+    # For a more natural interview feel, randomise the order of the
+    # questions within the generated set while keeping them role/level
+    # appropriate.
+    if isinstance(questions, list) and len(questions) > 1:
+        random.shuffle(questions)
+
+    # If generate_questions had to fall back due to timeout/error it resets availability cache
+    # to re-check on the next call. Treat that path as fallback for UI labeling.
+    if _ollama_available is None or _ollama_available is False:
+        return questions, "fallback"
+    return questions, "llm"
 
 
 def generate_followup(role: str, experience: str, previous_question: str, candidate_answer: str) -> str:
     """Generate a context-aware follow-up question for a live interview."""
+    followup_fallbacks = [
+        "Can you walk me through your reasoning step-by-step?",
+        "What trade-offs did you consider, and why did you choose that approach?",
+        "How would you validate this in production (tests/metrics/logging)?",
+        "What would you change if you had to scale this 10x?",
+        "What edge cases or failure modes does your approach have?",
+    ]
     if not _check_ollama_available():
-        return f"Can you go deeper on: '{previous_question[:80]}...'?"
+        return random.choice(followup_fallbacks)
 
     prompt = FOLLOWUP_PROMPT_TEMPLATE.format(
         master=MASTER_PROMPT,
@@ -542,7 +619,8 @@ def generate_followup(role: str, experience: str, previous_question: str, candid
                     "stop": ["<|end|>", "---"],
                 },
             },
-            timeout=30,
+            # Fast follow-up: keep the interview flowing.
+            timeout=min(15, max(1, QUESTION_GEN_TIMEOUT_SECONDS)),
         )
         response.raise_for_status()
         raw     = response.json().get("response", "").strip()
@@ -551,7 +629,7 @@ def generate_followup(role: str, experience: str, previous_question: str, candid
             cleaned = cleaned.rstrip(".!") + "?"
         return cleaned or f"Can you elaborate further on '{previous_question[:60]}'?"
     except Exception:
-        return f"Can you elaborate further on '{previous_question[:60]}'?"
+        return random.choice(followup_fallbacks)
 
 
 def generate_ai_feedback(role: str, experience: str, question: str,

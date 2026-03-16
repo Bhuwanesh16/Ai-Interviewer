@@ -99,8 +99,10 @@ const Result = () => {
     ?? {}
 
   const isTranscriptUnavailable =
-    typeof transcript === 'string' &&
-    transcript.toLowerCase().includes('transcription unavailable')
+    typeof transcript === 'string' && (
+      transcript.toLowerCase().includes('transcription unavailable')
+      || transcript === '__EMPTY_AUDIO__'
+    )
 
   // Single useEffect — only loads data once when sessionId changes
   useEffect(() => {

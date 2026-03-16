@@ -29,7 +29,16 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-WHISPER_MODEL_NAME = os.environ.get("WHISPER_MODEL", "base")
+# Optional fallback transcription path (does not require openai-whisper)
+try:
+    import speech_recognition as sr
+    SR_AVAILABLE = True
+except ImportError:
+    SR_AVAILABLE = False
+
+# Default to a faster Whisper model to reduce latency.
+# Can be overridden via env var WHISPER_MODEL.
+WHISPER_MODEL_NAME = os.environ.get("WHISPER_MODEL", "tiny")
 
 _whisper_model    = None
 _whisper_load_err = None          # only set for NON-ffmpeg errors (see fix 1)
@@ -172,7 +181,8 @@ def _load_model():
             "  Fix: pip install openai-whisper\n"
             "  Then restart the backend."
         )
-        raise RuntimeError(_whisper_load_err)
+        logger.warning(_whisper_load_err)
+        return None
     except Exception as exc:
         _whisper_load_err = f"Whisper model load failed: {exc}"
         raise RuntimeError(_whisper_load_err)
@@ -210,14 +220,13 @@ class TranscriptionService:
                 "duration": 0.0,
             }
 
+        # Attempt Whisper first (if available). If not, fall back to SpeechRecognition.
+        whisper_error = None
+        model = None
         try:
             model = _load_model()
         except RuntimeError as exc:
-            return {
-                "transcript": f"Transcription unavailable. {exc}",
-                "language": "unknown",
-                "duration": 0.0,
-            }
+            whisper_error = str(exc)
 
         # FIX: single _ffmpeg_available() call for both conversion + WAV path
         ffmpeg_ok = _ffmpeg_available()
@@ -229,41 +238,98 @@ class TranscriptionService:
             if wav_path:
                 transcribe_path = wav_path
             else:
-                logger.warning("Conversion failed; passing raw file to Whisper (may fail).")
+                logger.warning("Conversion failed; passing raw file to transcription (may fail).")
         else:
-            logger.warning("ffmpeg unavailable; raw WebM passed to Whisper (will likely fail).")
+            logger.warning("ffmpeg unavailable; raw WebM passed to transcription (will likely fail).")
+
+        # Fast guard: if audio is extremely short, Whisper can throw shape errors.
+        # Treat this as "no speech detected" instead of failing the whole pipeline.
+        try:
+            p = Path(audio_path)
+            if p.exists() and p.stat().st_size < 8_000:  # ~0.25s mono 16kHz wav (very rough)
+                return {"transcript": EMPTY_TRANSCRIPT_SENTINEL, "language": "unknown", "duration": 0.0}
+        except Exception:
+            pass
+
+        # Use Whisper if loaded
+        if model:
+            try:
+                # Speed: use conservative decoding settings for faster CPU inference.
+                # Keep fp16 disabled on CPU. Prefer deterministic decode.
+                result = model.transcribe(
+                    transcribe_path,
+                    fp16=False,
+                    temperature=0.0,
+                    best_of=1,
+                    beam_size=1,
+                    condition_on_previous_text=False,
+                )
+                text     = (result.get("text") or "").strip()
+                lang     = result.get("language", "en")
+                segs     = result.get("segments") or []
+                duration = segs[-1].get("end", 0.0) if segs else 0.0
+
+                if not text:
+                    logger.warning("Whisper returned empty transcript.")
+                    return {
+                        "transcript": EMPTY_TRANSCRIPT_SENTINEL,
+                        "language": lang,
+                        "duration": duration,
+                    }
+
+                logger.info(f"Transcribed {duration:.1f}s -> {len(text)} chars (lang={lang})")
+                return {"transcript": text, "language": lang, "duration": duration}
+
+            except Exception as exc:
+                err = str(exc)
+                logger.error(f"Whisper error: {err}", exc_info=True)
+                # Some very-short/silent clips can trigger internal shape errors.
+                # Treat these as empty audio rather than "transcription unavailable".
+                if "cannot reshape tensor of 0 elements" in err or "shape [1, 0," in err:
+                    return {"transcript": EMPTY_TRANSCRIPT_SENTINEL, "language": "unknown", "duration": 0.0}
+                if "WinError 2" in err:
+                    msg = (
+                        "Transcription unavailable. ffmpeg still not found by Whisper. "
+                        "Run: python fix_ffmpeg.py then restart the backend."
+                    )
+                else:
+                    msg = f"Transcription unavailable. Runtime error: {err}"
+                return {"transcript": msg, "language": "unknown", "duration": 0.0}
+
+            finally:
+                if wav_path and Path(wav_path).exists():
+                    try:
+                        Path(wav_path).unlink()
+                    except OSError:
+                        pass
+
+        # Fallback path: SpeechRecognition (Google Web Speech API)
+        if not SR_AVAILABLE:
+            msg = whisper_error or "openai-whisper is not installed."
+            return {"transcript": f"Transcription unavailable. {msg}", "language": "unknown", "duration": 0.0}
+
+        if not wav_path or not Path(wav_path).exists():
+            return {"transcript": "Transcription unavailable. Failed to prepare audio for transcription.", "language": "unknown", "duration": 0.0}
 
         try:
-            result   = model.transcribe(transcribe_path, fp16=False)
-            text     = (result.get("text") or "").strip()
-            lang     = result.get("language", "en")
-            segs     = result.get("segments") or []
-            duration = segs[-1].get("end", 0.0) if segs else 0.0
+            recognizer = sr.Recognizer()
+            with sr.AudioFile(wav_path) as source:
+                audio = recognizer.record(source)
 
+            text = recognizer.recognize_google(audio).strip()
             if not text:
-                logger.warning("Whisper returned empty transcript.")
-                # FIX: use sentinel so nlp_service returns nlp_score=None (N/A)
-                # instead of scoring an empty string as a weak answer
-                return {
-                    "transcript": EMPTY_TRANSCRIPT_SENTINEL,
-                    "language": lang,
-                    "duration": duration,
-                }
+                logger.warning("SpeechRecognition returned empty transcript.")
+                return {"transcript": EMPTY_TRANSCRIPT_SENTINEL, "language": "en", "duration": 0.0}
 
-            logger.info(f"Transcribed {duration:.1f}s -> {len(text)} chars (lang={lang})")
-            return {"transcript": text, "language": lang, "duration": duration}
+            logger.info(f"SpeechRecognition transcribed {len(text)} chars")
+            return {"transcript": text, "language": "en", "duration": 0.0}
 
+        except sr.UnknownValueError:
+            return {"transcript": EMPTY_TRANSCRIPT_SENTINEL, "language": "en", "duration": 0.0}
         except Exception as exc:
             err = str(exc)
-            logger.error(f"Whisper error: {err}", exc_info=True)
-            if "WinError 2" in err:
-                msg = (
-                    "Transcription unavailable. ffmpeg still not found by Whisper. "
-                    "Run: python fix_ffmpeg.py then restart the backend."
-                )
-            else:
-                msg = f"Transcription unavailable. Runtime error: {err}"
-            return {"transcript": msg, "language": "unknown", "duration": 0.0}
+            logger.error(f"SpeechRecognition error: {err}", exc_info=True)
+            return {"transcript": f"Transcription unavailable. Runtime error: {err}", "language": "unknown", "duration": 0.0}
 
         finally:
             if wav_path and Path(wav_path).exists():
@@ -285,24 +351,30 @@ class TranscriptionService:
         if not ffmpeg_ok:
             state   = "error"
             message = "ffmpeg not found. Run: python fix_ffmpeg.py"
-        elif not whisper_ok:
+        elif whisper_ok:
+            if not model_loaded:
+                state   = "ready"
+                message = f"Whisper '{WHISPER_MODEL_NAME}' loads on first transcription."
+            else:
+                state   = "active"
+                message = f"Whisper '{WHISPER_MODEL_NAME}' loaded and ready."
+        elif SR_AVAILABLE:
+            state   = "fallback"
+            message = "openai-whisper not installed; using SpeechRecognition fallback (requires internet)."
+        else:
             state   = "error"
             message = "openai-whisper not installed. Run: pip install openai-whisper"
-        elif not model_loaded:
-            state   = "ready"
-            message = f"Whisper '{WHISPER_MODEL_NAME}' loads on first transcription."
-        else:
-            state   = "active"
-            message = f"Whisper '{WHISPER_MODEL_NAME}' loaded and ready."
 
         return {
-            "state":             state,
-            "message":           message,
-            "ffmpeg":            ffmpeg_ok,
-            "whisper_installed": whisper_ok,
-            "model_loaded":      model_loaded,
-            "model_name":        WHISPER_MODEL_NAME,
-            "platform":          sys.platform,
+            "state":                   state,
+            "message":                 message,
+            "ffmpeg":                  ffmpeg_ok,
+            "whisper_installed":       whisper_ok,
+            "whisper_loaded":          model_loaded,
+            "speech_recognition":      SR_AVAILABLE,
+            "model_loaded":            model_loaded,
+            "model_name":              WHISPER_MODEL_NAME,
+            "platform":                sys.platform,
         }
 
 

@@ -1,50 +1,55 @@
 /**
- * LoadingScreen.jsx — professional UI refresh
+ * LoadingScreen.jsx — restructured UI
  *
- * Changes:
- * - Replaced hardcoded hex colors with CSS variables (light/dark mode safe)
- * - Added step list with live done/active/pending state
- * - Pulse ring on spinner for depth without blur/glow
- * - Animated icon and label transitions via JS (no framer-motion quirks)
- * - Dots rendered as individual spans for staggered blink
- * - Pip track uses smooth width transition
- * - Removed heavy box-shadow, backdrop-filter kept for overlay
+ * Changes from original:
+ * - Spinner + label moved to horizontal row (compact, scannable)
+ * - Sub-label grouped under step text as caption
+ * - Pip track as divider between header and step list
+ * - Step list uses border-bottom per row
+ * - Removed framer-motion — plain CSS transitions only
+ * - All colors via CSS variables (light/dark safe)
  */
 
-import { useEffect, useRef, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useEffect, useState } from 'react'
 
 const STEPS = [
-  { icon: '🎬', text: 'Processing your video response', time: '~1s' },
-  { icon: '🎙️', text: 'Analysing speech clarity',       time: '~1s' },
-  { icon: '🧠', text: 'Scoring content relevance',      time: '~1s' },
-  { icon: '📊', text: 'Generating performance report',  time: '~1s' },
+  { icon: '🎬', text: 'Preparing media',               time: '~1s' },
+  { icon: '🎙️', text: 'Transcribing & speech signals', time: '~2s' },
+  { icon: '🧠', text: 'Scoring content & presence',    time: '~2s' },
+  { icon: '📊', text: 'Assembling session report',     time: '~1s' },
 ]
 
-/* ─── Blink dots ─────────────────────────────────────────── */
-const blinkKeyframes = `
-@keyframes dot-blink {
-  0%, 66% { opacity: 1; }
-  67%, 100% { opacity: 0; }
-}
-@keyframes pulse-ring {
-  0%, 100% { opacity: 0.15; }
-  50%       { opacity: 0.35; }
-}
-@keyframes spin {
+/* ─── CSS injected once ──────────────────────────────────── */
+const GLOBAL_CSS = `
+@keyframes ls-spin {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
 }
+@keyframes ls-dot-blink {
+  0%, 66% { opacity: 1; }
+  67%, 100% { opacity: 0; }
+}
+.ls-arc {
+  transform-origin: 24px 24px;
+  animation: ls-spin 1.1s linear infinite;
+}
+.ls-icon-enter {
+  animation: ls-fade-in 0.2s ease forwards;
+}
+@keyframes ls-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
 `
 
+/* ─── Blink dots ─────────────────────────────────────────── */
 const BlinkDots = () => (
   <>
-    <style>{blinkKeyframes}</style>
     {[0, 1, 2].map(i => (
       <span
         key={i}
         style={{
-          animation: `dot-blink 1.2s ${i * 0.2}s infinite`,
+          animation: `ls-dot-blink 1.2s ${i * 0.2}s infinite`,
           display: 'inline-block',
         }}
       >
@@ -66,7 +71,7 @@ const StepRow = ({ step, state }) => {
         alignItems: 'center',
         gap: 10,
         padding: '8px 0',
-        borderTop: '0.5px solid var(--color-border-tertiary)',
+        borderBottom: '0.5px solid var(--color-border-tertiary)',
         fontSize: '0.8125rem',
         color: isDone
           ? 'var(--color-text-success)'
@@ -77,7 +82,7 @@ const StepRow = ({ step, state }) => {
         transition: 'color 0.25s',
       }}
     >
-      {/* indicator dot */}
+      {/* status dot */}
       <div
         style={{
           width: 7,
@@ -97,7 +102,9 @@ const StepRow = ({ step, state }) => {
           transition: 'background 0.25s, outline 0.25s',
         }}
       />
+
       <span style={{ flex: 1, lineHeight: 1.4 }}>{step.text}</span>
+
       <span
         style={{
           fontSize: '0.6875rem',
@@ -116,181 +123,187 @@ const StepRow = ({ step, state }) => {
 /* ─── Main component ─────────────────────────────────────── */
 const LoadingScreen = () => {
   const [stepIdx, setStepIdx] = useState(0)
+  const [visible, setVisible] = useState(false)
 
+  // Fade in on mount
   useEffect(() => {
-    const t = setInterval(() => setStepIdx(i => (i + 1) % STEPS.length), 1200)
+    requestAnimationFrame(() => setVisible(true))
+  }, [])
+
+  // Advance steps
+  useEffect(() => {
+    const t = setInterval(() => setStepIdx(i => (i + 1) % STEPS.length), 1400)
     return () => clearInterval(t)
   }, [])
 
   const step = STEPS[stepIdx]
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.25 }}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 9999,
-        background: 'rgba(0,0,0,0.45)',
-        backdropFilter: 'blur(10px)',
-        WebkitBackdropFilter: 'blur(10px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.94, y: 16 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ delay: 0.05, duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+    <>
+      <style>{GLOBAL_CSS}</style>
+
+      {/* Overlay */}
+      <div
         style={{
-          background: 'var(--color-background-primary)',
-          border: '0.5px solid var(--color-border-secondary)',
-          borderRadius: 20,
-          padding: '2.25rem 2.5rem',
-          textAlign: 'center',
-          width: 'min(360px, 88vw)',
+          position: 'fixed',
+          inset: 0,
+          zIndex: 9999,
+          background: 'rgba(2, 6, 15, 0.55)',
+          backdropFilter: 'blur(12px) saturate(1.2)',
+          WebkitBackdropFilter: 'blur(12px) saturate(1.2)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: visible ? 1 : 0,
+          transition: 'opacity 0.25s',
         }}
       >
-        {/* ── Spinner ── */}
+        {/* Card */}
         <div
           style={{
-            position: 'relative',
-            width: 64,
-            height: 64,
-            margin: '0 auto 1.5rem',
+            background: 'var(--color-background-primary)',
+            border: '0.5px solid var(--color-border-secondary)',
+            borderRadius: 20,
+            padding: '2rem',
+            width: 'min(340px, 88vw)',
+            transform: visible ? 'translateY(0) scale(1)' : 'translateY(16px) scale(0.94)',
+            opacity: visible ? 1 : 0,
+            transition: 'transform 0.3s cubic-bezier(0.16,1,0.3,1), opacity 0.3s',
           }}
         >
-          {/* pulse ring */}
+          {/* Header label */}
+          <p
+            style={{
+              fontSize: '0.6875rem',
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+              color: 'var(--color-text-tertiary)',
+              margin: '0 0 1.5rem',
+              fontFamily: "'JetBrains Mono', monospace",
+            }}
+          >
+            Session analysis
+          </p>
+
+          {/* ── Spinner + label row ── */}
           <div
             style={{
-              position: 'absolute',
-              inset: -6,
-              borderRadius: '50%',
-              border: '1px solid var(--color-border-info)',
-              animation: 'pulse-ring 2.2s ease-in-out infinite',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1rem',
+              marginBottom: '1.5rem',
             }}
-          />
-          {/* track + arc */}
-          <svg
-            style={{ position: 'absolute', inset: 0 }}
-            viewBox="0 0 64 64"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
           >
-            <circle
-              cx="32" cy="32" r="26"
-              stroke="var(--color-border-tertiary)"
-              strokeWidth="3.5"
-            />
-            <circle
-              cx="32" cy="32" r="26"
-              stroke="var(--color-text-info)"
-              strokeWidth="3.5"
-              strokeLinecap="round"
-              strokeDasharray="163"
-              strokeDashoffset="122"
-              style={{
-                transformOrigin: '32px 32px',
-                animation: 'spin 1.1s linear infinite',
-              }}
-            />
-          </svg>
-          {/* animated icon */}
-          <AnimatePresence mode="wait">
-            <motion.span
-              key={stepIdx}
-              initial={{ opacity: 0, scale: 0.55 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.55 }}
-              transition={{ duration: 0.18 }}
-              style={{
-                position: 'absolute',
-                inset: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 20,
-              }}
-            >
-              {step.icon}
-            </motion.span>
-          </AnimatePresence>
-        </div>
+            {/* Spinner */}
+            <div style={{ position: 'relative', width: 48, height: 48, flexShrink: 0 }}>
+              <svg
+                viewBox="0 0 48 48"
+                fill="none"
+                style={{ position: 'absolute', inset: 0, width: 48, height: 48 }}
+              >
+                {/* track */}
+                <circle
+                  cx="24" cy="24" r="19"
+                  stroke="var(--color-border-tertiary)"
+                  strokeWidth="2.5"
+                />
+                {/* spinning arc */}
+                <circle
+                  cx="24" cy="24" r="19"
+                  stroke="var(--color-text-info)"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeDasharray="119"
+                  strokeDashoffset="89"
+                  className="ls-arc"
+                />
+              </svg>
 
-        {/* ── Step label ── */}
-        <div
-          style={{
-            fontSize: '0.9375rem',
-            fontWeight: 500,
-            color: 'var(--color-text-primary)',
-            minHeight: '2.4em',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: '0.375rem',
-          }}
-        >
-          <AnimatePresence mode="wait">
-            <motion.span
-              key={stepIdx}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.2 }}
-            >
-              {step.text}
-            </motion.span>
-          </AnimatePresence>
-          <BlinkDots />
-        </div>
+              {/* Icon — key forces re-mount for fade-in */}
+              <span
+                key={stepIdx}
+                className="ls-icon-enter"
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 16,
+                }}
+              >
+                {step.icon}
+              </span>
+            </div>
 
-        {/* ── Sub-label ── */}
-        <p
-          style={{
-            fontSize: '0.6875rem',
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-            color: 'var(--color-text-tertiary)',
-            margin: '0 0 1.75rem',
-          }}
-        >
-          Parallel multi-modal analysis
-        </p>
+            {/* Label block */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div
+                style={{
+                  fontSize: '0.9375rem',
+                  fontWeight: 500,
+                  color: 'var(--color-text-primary)',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {step.text}
+                <BlinkDots />
+              </div>
+              <div
+                style={{
+                  fontSize: '0.6875rem',
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  color: 'var(--color-text-tertiary)',
+                  marginTop: 2,
+                }}
+              >
+                Real-time multi‑signal scoring
+              </div>
+            </div>
+          </div>
 
-        {/* ── Pip track ── */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 5, alignItems: 'center' }}>
-          {STEPS.map((_, i) => (
-            <motion.div
-              key={i}
-              animate={{
-                width: i === stepIdx ? 20 : 6,
-                background:
-                  i === stepIdx
-                    ? 'var(--color-text-info)'
-                    : 'var(--color-border-secondary)',
-              }}
-              transition={{ duration: 0.25 }}
-              style={{ height: 5, borderRadius: 99 }}
-            />
-          ))}
-        </div>
+          {/* ── Pip track ── */}
+          <div
+            style={{
+              display: 'flex',
+              gap: 5,
+              alignItems: 'center',
+              marginBottom: '1.5rem',
+            }}
+          >
+            {STEPS.map((_, i) => (
+              <div
+                key={i}
+                style={{
+                  height: 4,
+                  borderRadius: 99,
+                  width: i === stepIdx ? 20 : 6,
+                  background:
+                    i === stepIdx
+                      ? 'var(--color-text-info)'
+                      : 'var(--color-border-secondary)',
+                  transition: 'width 0.25s, background 0.25s',
+                }}
+              />
+            ))}
+          </div>
 
-        {/* ── Step list ── */}
-        <div style={{ marginTop: '1.25rem' }}>
-          {STEPS.map((s, i) => (
-            <StepRow
-              key={i}
-              step={s}
-              state={i < stepIdx ? 'done' : i === stepIdx ? 'active' : 'pending'}
-            />
-          ))}
+          {/* ── Step list ── */}
+          <div>
+            {STEPS.map((s, i) => (
+              <StepRow
+                key={i}
+                step={s}
+                state={i < stepIdx ? 'done' : i === stepIdx ? 'active' : 'pending'}
+              />
+            ))}
+          </div>
         </div>
-      </motion.div>
-    </motion.div>
+      </div>
+    </>
   )
 }
 

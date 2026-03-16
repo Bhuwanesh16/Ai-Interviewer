@@ -12,6 +12,9 @@ Fixes applied:
 
 from datetime import datetime
 import os
+import subprocess
+import uuid
+from pathlib import Path
 
 from flask import Blueprint, request, jsonify
 
@@ -27,7 +30,7 @@ from services.transcription_service import EMPTY_TRANSCRIPT_SENTINEL
 from services.nlp_service import nlp_service
 from services.scoring_service import scoring_service
 from services.report_service import report_service
-from services.question_service import generate_questions as llm_generate_questions
+from services.question_service import generate_questions_with_source
 from utils.video_utils import save_uploaded_video
 from utils.audio_utils import save_uploaded_audio
 
@@ -49,20 +52,32 @@ def generate_questions_route(user_id):
     payload = request.get_json() or {}
     role = payload.get("role", "Software Engineer").strip()
     skills = payload.get("skills", "").strip()
-    level = payload.get("level", "Intermediate").strip()
-    num_q = max(1, int(payload.get("numQuestions", 3)))
+    # Accept both old and new frontend payload shapes
+    level = (
+        payload.get("experience_level")
+        or payload.get("level")
+        or "Intermediate"
+    ).strip()
+    num_q = payload.get("question_volume", payload.get("numQuestions", 3))
+    try:
+        num_q = max(1, int(num_q))
+    except (TypeError, ValueError):
+        num_q = 3
 
-    questions = llm_generate_questions(
+    force_fallback = bool(payload.get("force_fallback", False))
+
+    questions, source = generate_questions_with_source(
         role=role,
         experience=level,
         skills=skills,
         question_volume=num_q,
+        force_fallback=force_fallback,
     )
 
     if not isinstance(questions, list) or not questions:
         questions = [f"Tell me about your experience as a {role}."]
 
-    return jsonify({"questions": questions, "source": "llm"}), 200
+    return jsonify({"questions": questions, "source": source}), 200
 
 
 @interview_bp.post("/generate_followup")
@@ -123,11 +138,13 @@ def submit_interview(user_id):
     video_file = request.files.get("video")
     audio_file = request.files.get("audio")
 
-    if not video_file or not audio_file:
-        return jsonify({"message": "Missing video or audio"}), 400
+    # Allow faster uploads: if edge facial score is provided, video can be omitted.
+    # Also allow audio to be omitted if video contains audio (we can extract it).
+    if not video_file and not audio_file:
+        return jsonify({"message": "Missing video and audio"}), 400
 
-    video_path = save_uploaded_video(video_file, "uploads/videos")
-    audio_path = save_uploaded_audio(audio_file, "uploads/audios")
+    video_path = save_uploaded_video(video_file, "uploads/videos") if video_file else None
+    audio_path = save_uploaded_audio(audio_file, "uploads/audios") if audio_file else None
 
     edge_facial_str = request.form.get("edge_facial_score")
     if edge_facial_str:
@@ -157,14 +174,18 @@ def submit_interview(user_id):
     import concurrent.futures
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-        fut_trans = executor.submit(transcription_service.transcribe, audio_path)
+        # If no audio upload, try extracting audio from video first.
+        if audio_path:
+            fut_trans = executor.submit(transcription_service.transcribe, audio_path)
+        else:
+            fut_trans = executor.submit(lambda: {"transcript": EMPTY_TRANSCRIPT_SENTINEL, "language": "unknown", "duration": 0.0})
 
         fut_speech = None
-        if edge_speech is None:
+        if edge_speech is None and audio_path:
             fut_speech = executor.submit(speech_service.analyze_audio, audio_path)
 
         fut_facial = None
-        if raw_edge <= 0:
+        if raw_edge <= 0 and video_path:
             fut_facial = executor.submit(facial_service.analyze_video, video_path)
 
         # Collect results with sensible timeouts
@@ -172,6 +193,38 @@ def submit_interview(user_id):
             transcript_result = fut_trans.result(timeout=120)
         except Exception:
             transcript_result = {"transcript": "Transcription unavailable. Timeout or error.", "language": "unknown", "duration": 0.0}
+
+        # Robustness: if the dedicated audio upload is empty/silent or fails to transcribe,
+        # try extracting audio from the uploaded video container and transcribe that instead.
+        try:
+            tr_text = (transcript_result or {}).get("transcript", "")
+            needs_fallback = (
+                (tr_text == EMPTY_TRANSCRIPT_SENTINEL)
+                or (isinstance(tr_text, str) and tr_text.startswith("Transcription unavailable"))
+            )
+            if needs_fallback and video_path and Path(video_path).exists():
+                tmp_dir = Path("uploads/audios/temp")
+                tmp_dir.mkdir(parents=True, exist_ok=True)
+                extracted = tmp_dir / f"{uuid.uuid4().hex}_from_video.wav"
+                cmd = [
+                    "ffmpeg", "-y",
+                    "-i", str(video_path),
+                    "-vn",
+                    "-ar", "16000",
+                    "-ac", "1",
+                    str(extracted),
+                ]
+                r = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+                if r.returncode == 0 and extracted.exists() and extracted.stat().st_size > 0:
+                    transcript_result = transcription_service.transcribe(str(extracted))
+                try:
+                    if extracted.exists():
+                        extracted.unlink()
+                except OSError:
+                    pass
+        except Exception:
+            # If fallback extraction fails, keep original transcript_result.
+            pass
 
         if fut_speech:
             try:
@@ -244,6 +297,7 @@ def submit_interview(user_id):
         level=session.experience_level,
         question=question,
         facial_details=facial_result,   # Always passed so eye_contact/posture populate
+        skip_ai=True,                  # Performance: don't block /submit on phi3 feedback
     )
 
     return jsonify({

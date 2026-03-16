@@ -93,6 +93,7 @@ const WebcamRecorder = ({
   setMediaStream,
   onModelStatus,
   onEmotionScore,
+  onIntegrityViolation,
 }) => {
   const videoRef       = useRef(null)
   const canvasRef      = useRef(null)
@@ -184,7 +185,9 @@ const WebcamRecorder = ({
           locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`,
         })
         faceMesh.setOptions({
-          maxNumFaces:            1,
+          // Detect up to 2 faces so we can flag interview integrity issues.
+          // We still score only the primary face (index 0) to keep compute low.
+          maxNumFaces:            2,
           refineLandmarks:        false,   // saves +40ms/frame
           minDetectionConfidence: 0.5,
           minTrackingConfidence:  0.5,
@@ -204,7 +207,14 @@ const WebcamRecorder = ({
             canvasSizeRef.current = { w: vw, h: vh }
           }
 
-          if (!results.multiFaceLandmarks?.length) {
+          const faceCount = results.multiFaceLandmarks?.length || 0
+
+          // Integrity: more than one face detected during an active session.
+          if (faceCount > 1) {
+            try { onIntegrityViolation?.({ type: 'MULTIPLE_FACES', faceCount }) } catch { /* ignore */ }
+          }
+
+          if (!faceCount) {
             pendingLmRef.current = null
             // Write fallback score to ref — flushed by interval, not here
             latestScoreRef.current = {
