@@ -12,10 +12,10 @@ import { startInterview, submitInterview, generateQuestions, generateFollowup } 
 const DEFAULT_QUESTION = 'Tell me about a time you solved a challenging technical problem.'
 
 const LEVEL_COLORS = {
-  'Entry Level':    { bg: 'rgba(16,185,129,0.1)',  text: '#10b981', label: 'Entry' },
-  'Intermediate':   { bg: 'rgba(14,165,233,0.1)',  text: '#0ea5e9', label: 'Mid' },
-  'Senior':         { bg: 'rgba(139,92,246,0.1)',  text: '#8b5cf6', label: 'Senior' },
-  'Lead / Manager': { bg: 'rgba(249,115,22,0.1)',  text: '#f97316', label: 'Lead' },
+  'Entry Level': { bg: 'rgba(16,185,129,0.1)', text: '#10b981', label: 'Entry' },
+  'Intermediate': { bg: 'rgba(14,165,233,0.1)', text: '#0ea5e9', label: 'Mid' },
+  'Senior': { bg: 'rgba(139,92,246,0.1)', text: '#8b5cf6', label: 'Senior' },
+  'Lead / Manager': { bg: 'rgba(249,115,22,0.1)', text: '#f97316', label: 'Lead' },
 }
 
 const INITIAL_LIVE = { score: 0, eyeContact: 'Low', posture: 'Unknown', smile: 0, presence: '0%', speech: 0 }
@@ -23,8 +23,8 @@ const INITIAL_LIVE = { score: 0, eyeContact: 'Low', posture: 'Unknown', smile: 0
 // Generation progress steps shown to user during phi3 inference
 // Timings are conservative — phi3 on CPU takes 20–60s depending on hardware
 const GEN_STEPS = [
-  [500,   'Connecting to AI model...'],
-  [3000,  'Analysing role requirements...'],
+  [500, 'Connecting to AI model...'],
+  [3000, 'Analysing role requirements...'],
   [10000, 'Generating questions...'],
   [25000, 'Refining question set...'],
   [45000, 'Almost ready...'],
@@ -32,31 +32,31 @@ const GEN_STEPS = [
 
 const Interview = () => {
   const navigate = useNavigate()
-  const [sessionId, setSessionId]         = useState(null)
-  const [setupStep, setSetupStep]         = useState(1)
-  const [customRole, setCustomRole]       = useState('')
+  const [sessionId, setSessionId] = useState(null)
+  const [setupStep, setSetupStep] = useState(1)
+  const [customRole, setCustomRole] = useState('')
   const [useCustomRole, setUseCustomRole] = useState(false)
 
-  const [backendOk, setBackendOk]     = useState(null)
-  const [avOk, setAvOk]               = useState({ camera: null, mic: null })
+  const [backendOk, setBackendOk] = useState(null)
+  const [avOk, setAvOk] = useState({ camera: null, mic: null })
   const [faceModelOk, setFaceModelOk] = useState(null)
 
   const [isSetupComplete, setIsSetupComplete] = useState(false)
   const [hasStartedSession, setHasStartedSession] = useState(false)
-  const [role, setRole]             = useState('Software Engineer')
-  const [skills, setSkills]         = useState('')
-  const [level, setLevel]           = useState('Intermediate')
+  const [role, setRole] = useState('Software Engineer')
+  const [skills, setSkills] = useState('')
+  const [level, setLevel] = useState('Intermediate')
   const [numQuestions, setNumQuestions] = useState(3)
-  const [questions, setQuestions]   = useState([DEFAULT_QUESTION])
+  const [questions, setQuestions] = useState([DEFAULT_QUESTION])
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [questionSource, setQuestionSource] = useState(null)
 
   const question = questions[currentQuestionIndex]
-  const [timer, setTimer]         = useState(0)
+  const [timer, setTimer] = useState(0)
   const [isRecording, setIsRecording] = useState(false)
   const [mediaStream, setMediaStream] = useState(null)
 
-  const [liveData, setLiveData]   = useState(INITIAL_LIVE)
+  const [liveData, setLiveData] = useState(INITIAL_LIVE)
   const [pendingAnswers, setPendingAnswers] = useState([]) // one per question, stored client-side
   const [integrityIssue, setIntegrityIssue] = useState(null)
   const integrityIssueRef = useRef(null)
@@ -68,15 +68,15 @@ const Interview = () => {
   const audioChunksRef = useRef([])
 
   const emotionScoresRef = useRef([])
-  const speechScoresRef  = useRef([])
+  const speechScoresRef = useRef([])
   const mediaRecorderRef = useRef(null)
-  const chunksRef        = useRef([])
+  const chunksRef = useRef([])
   const [loading, setLoading] = useState(false)
-  const [phase, setPhase]     = useState('idle')
+  const [phase, setPhase] = useState('idle')
 
   const onEmotionScoreRef = useRef(null)
-  const onSpeechScoreRef  = useRef(null)
-  const isRecordingRef    = useRef(isRecording)
+  const onSpeechScoreRef = useRef(null)
+  const isRecordingRef = useRef(isRecording)
 
   useEffect(() => { isRecordingRef.current = isRecording }, [isRecording])
 
@@ -170,7 +170,7 @@ const Interview = () => {
       }
       chunksRef.current = []
       emotionScoresRef.current = []
-      speechScoresRef.current  = []
+      speechScoresRef.current = []
 
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
 
@@ -178,7 +178,7 @@ const Interview = () => {
         setLoading(true)
         setPhase('processing')
         try {
-          const blob    = new Blob(chunksRef.current, { type: 'video/webm' })
+          const blob = new Blob(chunksRef.current, { type: 'video/webm' })
           const audioBlob = audioChunksRef.current.length > 0
             ? new Blob(audioChunksRef.current, { type: 'audio/webm' })
             : blob
@@ -290,8 +290,8 @@ const Interview = () => {
     }
   }
 
-  const handleStartInterview  = () => setHasStartedSession(true)
-  const handleResetSetup      = () => {
+  const handleStartInterview = () => setHasStartedSession(true)
+  const handleResetSetup = () => {
     if (isRecording) return
     setIsSetupComplete(false)
     setHasStartedSession(false)
@@ -383,149 +383,149 @@ const Interview = () => {
               <p style={{ color: '#64748b', fontSize: '1rem' }}>Configure your professional session</p>
             </div>
 
-              <form onSubmit={handleSetupSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
-                  {/* Role */}
-                  <div>
-                    <label style={labelStyle}>Target Role</label>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      <select
-                        value={useCustomRole ? 'Other (Custom)' : role}
-                        onChange={e => {
-                          if (e.target.value === 'Other (Custom)') { setUseCustomRole(true) }
-                          else { setUseCustomRole(false); setRole(e.target.value) }
-                        }}
-                        style={selectStyle}
-                      >
-                        <option value="" disabled>Select a role...</option>
-                        {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-                      </select>
-                      {useCustomRole && (
-                        <motion.input
-                          initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-                          value={customRole} onChange={e => setCustomRole(e.target.value)}
-                          placeholder="Enter your specific role title..." autoFocus
-                          style={{ ...inputStyle, border: '1px solid #0ea5e9', boxShadow: '0 0 0 4px rgba(14,165,233,0.1)' }}
-                        />
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Skills */}
-                  <div>
-                    <label style={labelStyle}>Key Skills / Tech Stack</label>
-                    <input
-                      value={skills} onChange={e => setSkills(e.target.value)}
-                      placeholder="e.g. React, Python, Cloud Architecture (comma separated)"
-                      style={inputStyle}
-                    />
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                    {/* Level */}
-                    <div>
-                      <label style={labelStyle}>Experience Level</label>
-                      <select value={level} onChange={e => setLevel(e.target.value)} style={selectStyle}>
-                        <option>Entry Level</option>
-                        <option>Intermediate</option>
-                        <option>Senior</option>
-                        <option>Lead / Manager</option>
-                      </select>
-                    </div>
-
-                    {/* Question count */}
-                    <div>
-                      <label style={labelStyle}>Num Questions: {numQuestions}</label>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem' }}>
-                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>1</span>
-                        <input type="range" min="1" max="10" step="1" value={numQuestions}
-                          onChange={e => setNumQuestions(parseInt(e.target.value))}
-                          style={{ flex: 1, accentColor: '#0ea5e9', cursor: 'pointer' }}
-                        />
-                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>10</span>
-                      </div>
-                    </div>
+            <form onSubmit={handleSetupSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
+                {/* Role */}
+                <div>
+                  <label style={labelStyle}>Target Role</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <select
+                      value={useCustomRole ? 'Other (Custom)' : role}
+                      onChange={e => {
+                        if (e.target.value === 'Other (Custom)') { setUseCustomRole(true) }
+                        else { setUseCustomRole(false); setRole(e.target.value) }
+                      }}
+                      style={selectStyle}
+                    >
+                      <option value="" disabled>Select a role...</option>
+                      {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                    {useCustomRole && (
+                      <motion.input
+                        initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+                        value={customRole} onChange={e => setCustomRole(e.target.value)}
+                        placeholder="Enter your specific role title..." autoFocus
+                        style={{ ...inputStyle, border: '1px solid #0ea5e9', boxShadow: '0 0 0 4px rgba(14,165,233,0.1)' }}
+                      />
+                    )}
                   </div>
                 </div>
 
-                {/* ── Generation progress indicator ── */}
-                <AnimatePresence>
-                  {loading && genStatus && (
-                    <motion.div
-                      key="gen-status"
-                      initial={{ opacity: 0, y: -8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -8 }}
-                      style={{
-                        padding: '0.75rem 1rem',
-                        borderRadius: '0.875rem',
-                        background: genStatus.includes('✓')
-                          ? 'rgba(16,185,129,0.08)'
-                          : 'rgba(14,165,233,0.08)',
-                        border: `1px solid ${genStatus.includes('✓')
-                          ? 'rgba(16,185,129,0.25)'
-                          : 'rgba(14,165,233,0.2)'}`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.75rem',
-                      }}
-                    >
-                      {/* Spinner or checkmark */}
-                      {genStatus.includes('✓') ? (
-                        <span style={{ fontSize: '1rem' }}>✓</span>
-                      ) : (
-                        <div style={{
-                          width: 14, height: 14, flexShrink: 0,
-                          borderRadius: '50%',
-                          border: '2px solid rgba(14,165,233,0.2)',
-                          borderTopColor: '#0ea5e9',
-                          animation: 'spin 0.8s linear infinite',
-                        }} />
-                      )}
-                      <span style={{
-                        fontFamily: "'JetBrains Mono', monospace",
-                        fontSize: '0.75rem',
-                        color: genStatus.includes('✓') ? '#10b981' : '#0ea5e9',
-                        letterSpacing: '0.02em',
-                      }}>
-                        {genStatus}
-                      </span>
-                      {/* Animated dots for in-progress states */}
-                      {!genStatus.includes('✓') && (
-                        <span style={{
-                          marginLeft: 'auto',
-                          fontSize: '0.7rem',
-                          color: '#94a3b8',
-                          fontFamily: "'DM Sans', sans-serif",
-                        }}>
-                          phi3 · CPU inference
-                        </span>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                {/* Skills */}
+                <div>
+                  <label style={labelStyle}>Key Skills / Tech Stack</label>
+                  <input
+                    value={skills} onChange={e => setSkills(e.target.value)}
+                    placeholder="e.g. React, Python, Cloud Architecture (comma separated)"
+                    style={inputStyle}
+                  />
+                </div>
 
-                <motion.button whileHover={{ scale: loading ? 1 : 1.02 }} whileTap={{ scale: loading ? 1 : 0.98 }}
-                  type="submit" disabled={loading}
-                  style={{
-                    padding: '1.25rem', borderRadius: '1rem',
-                    background: loading
-                      ? 'rgba(14,165,233,0.4)'
-                      : 'linear-gradient(135deg, #0ea5e9, #6366f1)',
-                    color: loading ? '#94a3b8' : '#fff',
-                    fontWeight: 800, fontSize: '1.125rem', border: 'none',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    boxShadow: loading ? 'none' : '0 10px 25px -5px rgba(14,165,233,0.4)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem',
-                    transition: 'all 0.25s ease',
-                  }}>
-                  {loading
-                    ? <span style={{ opacity: 0.7 }}>Starting Interview...</span>
-                    : <><span>Start Interview</span><span>→</span></>
-                  }
-                </motion.button>
-              </form>
-            </motion.div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                  {/* Level */}
+                  <div>
+                    <label style={labelStyle}>Experience Level</label>
+                    <select value={level} onChange={e => setLevel(e.target.value)} style={selectStyle}>
+                      <option>Entry Level</option>
+                      <option>Intermediate</option>
+                      <option>Senior</option>
+                      <option>Lead / Manager</option>
+                    </select>
+                  </div>
+
+                  {/* Question count */}
+                  <div>
+                    <label style={labelStyle}>Num Questions: {numQuestions}</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem' }}>
+                      <span style={{ fontSize: '0.75rem', color: '#64748b' }}>1</span>
+                      <input type="range" min="1" max="10" step="1" value={numQuestions}
+                        onChange={e => setNumQuestions(parseInt(e.target.value))}
+                        style={{ flex: 1, accentColor: '#0ea5e9', cursor: 'pointer' }}
+                      />
+                      <span style={{ fontSize: '0.75rem', color: '#64748b' }}>10</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Generation progress indicator ── */}
+              <AnimatePresence>
+                {loading && genStatus && (
+                  <motion.div
+                    key="gen-status"
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    style={{
+                      padding: '0.75rem 1rem',
+                      borderRadius: '0.875rem',
+                      background: genStatus.includes('✓')
+                        ? 'rgba(16,185,129,0.08)'
+                        : 'rgba(14,165,233,0.08)',
+                      border: `1px solid ${genStatus.includes('✓')
+                        ? 'rgba(16,185,129,0.25)'
+                        : 'rgba(14,165,233,0.2)'}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                    }}
+                  >
+                    {/* Spinner or checkmark */}
+                    {genStatus.includes('✓') ? (
+                      <span style={{ fontSize: '1rem' }}>✓</span>
+                    ) : (
+                      <div style={{
+                        width: 14, height: 14, flexShrink: 0,
+                        borderRadius: '50%',
+                        border: '2px solid rgba(14,165,233,0.2)',
+                        borderTopColor: '#0ea5e9',
+                        animation: 'spin 0.8s linear infinite',
+                      }} />
+                    )}
+                    <span style={{
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: '0.75rem',
+                      color: genStatus.includes('✓') ? '#10b981' : '#0ea5e9',
+                      letterSpacing: '0.02em',
+                    }}>
+                      {genStatus}
+                    </span>
+                    {/* Animated dots for in-progress states */}
+                    {!genStatus.includes('✓') && (
+                      <span style={{
+                        marginLeft: 'auto',
+                        fontSize: '0.7rem',
+                        color: '#94a3b8',
+                        fontFamily: "'DM Sans', sans-serif",
+                      }}>
+                        phi3 · CPU inference
+                      </span>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <motion.button whileHover={{ scale: loading ? 1 : 1.02 }} whileTap={{ scale: loading ? 1 : 0.98 }}
+                type="submit" disabled={loading}
+                style={{
+                  padding: '1.25rem', borderRadius: '1rem',
+                  background: loading
+                    ? 'rgba(14,165,233,0.4)'
+                    : 'linear-gradient(135deg, #0ea5e9, #6366f1)',
+                  color: loading ? '#94a3b8' : '#fff',
+                  fontWeight: 800, fontSize: '1.125rem', border: 'none',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  boxShadow: loading ? 'none' : '0 10px 25px -5px rgba(14,165,233,0.4)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem',
+                  transition: 'all 0.25s ease',
+                }}>
+                {loading
+                  ? <span style={{ opacity: 0.7 }}>Starting Interview...</span>
+                  : <><span>Start Interview</span><span>→</span></>
+                }
+              </motion.button>
+            </form>
+          </motion.div>
         </AnimatePresence>
       </div>
     )
@@ -659,11 +659,11 @@ const Interview = () => {
 
       {/* Status pills */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.9rem' }}>
-        <StatusPill label="backend"    value={backendOk === null ? 'checking' : backendOk ? 'online' : 'offline'}      variant={backendOk === null ? 'info' : backendOk ? 'ok' : 'err'} pulse={backendOk === true} />
-        <StatusPill label="camera"     value={avOk.camera === null ? 'checking' : avOk.camera ? 'ready' : 'blocked'}   variant={avOk.camera === null ? 'info' : avOk.camera ? 'ok' : 'err'} />
-        <StatusPill label="mic"        value={avOk.mic === null ? 'checking' : avOk.mic ? 'ready' : 'blocked'}         variant={avOk.mic === null ? 'info' : avOk.mic ? 'ok' : 'err'} />
-        <StatusPill label="face model" value={faceModelOk === null ? 'loading' : faceModelOk ? 'loaded' : 'error'}     variant={faceModelOk === null ? 'info' : faceModelOk ? 'ok' : 'err'} pulse={faceModelOk === true && isRecording} />
-        <StatusPill label="scoring"    value={isRecording ? 'live' : 'paused'}                                         variant={isRecording ? 'ok' : 'warn'} pulse={isRecording} />
+        <StatusPill label="backend" value={backendOk === null ? 'checking' : backendOk ? 'online' : 'offline'} variant={backendOk === null ? 'info' : backendOk ? 'ok' : 'err'} pulse={backendOk === true} />
+        <StatusPill label="camera" value={avOk.camera === null ? 'checking' : avOk.camera ? 'ready' : 'blocked'} variant={avOk.camera === null ? 'info' : avOk.camera ? 'ok' : 'err'} />
+        <StatusPill label="mic" value={avOk.mic === null ? 'checking' : avOk.mic ? 'ready' : 'blocked'} variant={avOk.mic === null ? 'info' : avOk.mic ? 'ok' : 'err'} />
+        <StatusPill label="face model" value={faceModelOk === null ? 'loading' : faceModelOk ? 'loaded' : 'error'} variant={faceModelOk === null ? 'info' : faceModelOk ? 'ok' : 'err'} pulse={faceModelOk === true && isRecording} />
+        <StatusPill label="scoring" value={isRecording ? 'live' : 'paused'} variant={isRecording ? 'ok' : 'warn'} pulse={isRecording} />
       </div>
 
       {/* Main grid */}

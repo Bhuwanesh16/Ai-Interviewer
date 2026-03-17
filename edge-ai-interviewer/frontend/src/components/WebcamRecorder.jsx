@@ -32,14 +32,14 @@ import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 
 const MEDIAPIPE_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js'
-const CAMERA_CDN    = 'https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js'
+const CAMERA_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js'
 
 // 1fps inference — very low throughput to avoid main-thread backlog
 // Use when running on low-end machines or during heavy CPU load.
-const SEND_THROTTLE_MS  = 1000
+const SEND_THROTTLE_MS = 1000
 // Flush scores to React state once per second — minimizes React renders
 // and reduces 'message' handler overhead from the MediaPipe wasm worker.
-const STATE_FLUSH_MS    = 1000
+const STATE_FLUSH_MS = 1000
 
 const MESH_POINTS = [33, 133, 362, 263, 61, 291, 4, 234, 454]
 
@@ -48,20 +48,20 @@ function computeScores(lm) {
   if (lm.length > 473) {
     const eyeRatio = (inner, outer, iris) => {
       const total = Math.hypot(outer.x - inner.x, outer.y - inner.y)
-      const dist  = Math.hypot(iris.x  - inner.x, iris.y  - inner.y)
+      const dist = Math.hypot(iris.x - inner.x, iris.y - inner.y)
       return total > 0 ? dist / total : 0.5
     }
     const lR = eyeRatio(lm[362], lm[263], lm[468])
-    const rR = eyeRatio(lm[33],  lm[133], lm[473])
+    const rR = eyeRatio(lm[33], lm[133], lm[473])
     eyeScore = Math.max(0, 1 - (Math.abs(lR - 0.5) + Math.abs(rR - 0.5)))
   }
 
-  const mouthW     = Math.hypot(lm[291].x - lm[61].x,  lm[291].y - lm[61].y)
-  const faceW      = Math.hypot(lm[454].x - lm[234].x, lm[454].y - lm[234].y)
+  const mouthW = Math.hypot(lm[291].x - lm[61].x, lm[291].y - lm[61].y)
+  const faceW = Math.hypot(lm[454].x - lm[234].x, lm[454].y - lm[234].y)
   const smileRatio = faceW > 0 ? mouthW / faceW : 0
   const smileScore = Math.min(Math.max((smileRatio - 0.3) / 0.25, 0) * 0.5 + 0.5, 1)
 
-  const centerX       = (lm[234].x + lm[454].x) / 2
+  const centerX = (lm[234].x + lm[454].x) / 2
   const headStability = Math.max(0, 1 - Math.abs(lm[4].x - centerX) * 5)
 
   const score = Math.min(
@@ -72,9 +72,9 @@ function computeScores(lm) {
   return {
     score,
     eyeContact: eyeScore > 0.75 ? 'High' : eyeScore > 0.5 ? 'Good' : 'Low',
-    posture:    headStability > 0.75 ? 'Stable' : headStability > 0.45 ? 'Average' : 'Restless',
-    smile:      Math.round(smileRatio * 100),
-    presence:   '100%',
+    posture: headStability > 0.75 ? 'Stable' : headStability > 0.45 ? 'Average' : 'Restless',
+    smile: Math.round(smileRatio * 100),
+    presence: '100%',
   }
 }
 
@@ -95,26 +95,26 @@ const WebcamRecorder = ({
   onEmotionScore,
   onIntegrityViolation,
 }) => {
-  const videoRef       = useRef(null)
-  const canvasRef      = useRef(null)
-  const cameraRef      = useRef(null)
-  const streamRef      = useRef(null)
-  const ctxRef         = useRef(null)
-  const isRecRef       = useRef(isRecording)
-  const lastSendRef    = useRef(0)
-  const canvasSizeRef  = useRef({ w: 0, h: 0 })
-  const pendingLmRef   = useRef(null)
-  const rafRef         = useRef(null)
-  const flushRef       = useRef(null)          // setInterval for state flush
-  const isSendingRef   = useRef(false)         // guard against concurrent sends
+  const videoRef = useRef(null)
+  const canvasRef = useRef(null)
+  const cameraRef = useRef(null)
+  const streamRef = useRef(null)
+  const ctxRef = useRef(null)
+  const isRecRef = useRef(isRecording)
+  const lastSendRef = useRef(0)
+  const canvasSizeRef = useRef({ w: 0, h: 0 })
+  const pendingLmRef = useRef(null)
+  const rafRef = useRef(null)
+  const flushRef = useRef(null)          // setInterval for state flush
+  const isSendingRef = useRef(false)         // guard against concurrent sends
   const latestScoreRef = useRef(null)          // latest score, flushed by interval
-  const onEmotionRef   = useRef(onEmotionScore) // stable ref to avoid re-init
+  const onEmotionRef = useRef(onEmotionScore) // stable ref to avoid re-init
 
   const [modelReady, setModelReady] = useState(false)
-  const [camError,   setCamError]   = useState(null)
+  const [camError, setCamError] = useState(null)
 
   // Keep refs in sync without triggering re-init
-  useEffect(() => { isRecRef.current    = isRecording    }, [isRecording])
+  useEffect(() => { isRecRef.current = isRecording }, [isRecording])
   useEffect(() => { onEmotionRef.current = onEmotionScore }, [onEmotionScore])
 
   useEffect(() => {
@@ -123,7 +123,7 @@ const WebcamRecorder = ({
     // ── rAF canvas paint loop — completely separate from MediaPipe ────────────
     const paintLoop = () => {
       rafRef.current = requestAnimationFrame(paintLoop)
-      const lm     = pendingLmRef.current
+      const lm = pendingLmRef.current
       const canvas = canvasRef.current
       if (!lm || !canvas || !isRecRef.current) return
       if (!ctxRef.current) ctxRef.current = canvas.getContext('2d')
@@ -144,24 +144,24 @@ const WebcamRecorder = ({
     // This interval reads it and calls setState at a controlled 2Hz rate.
     // Result: React never re-renders inside the MediaPipe message handler.
     const startFlushInterval = () => {
-        let lastEmitted = null
-        flushRef.current = setInterval(() => {
-          // If the page is hidden, don't flush — reduces background work
-          if (typeof document !== 'undefined' && document.hidden) return
+      let lastEmitted = null
+      flushRef.current = setInterval(() => {
+        // If the page is hidden, don't flush — reduces background work
+        if (typeof document !== 'undefined' && document.hidden) return
 
-          const score = latestScoreRef.current
-          if (!score) return
+        const score = latestScoreRef.current
+        if (!score) return
 
-          // Avoid emitting identical or near-identical scores to prevent
-          // unnecessary React renders. Threshold tuned to 1% change.
-          const prev = lastEmitted
-          const diff = prev == null ? Infinity : Math.abs((score.score || 0) - (prev.score || 0))
-          if (diff < 0.01) return
+        // Avoid emitting identical or near-identical scores to prevent
+        // unnecessary React renders. Threshold tuned to 1% change.
+        const prev = lastEmitted
+        const diff = prev == null ? Infinity : Math.abs((score.score || 0) - (prev.score || 0))
+        if (diff < 0.01) return
 
-          lastEmitted = score
-          onEmotionRef.current?.(score)
-          latestScoreRef.current = null
-        }, STATE_FLUSH_MS)
+        lastEmitted = score
+        onEmotionRef.current?.(score)
+        latestScoreRef.current = null
+      }, STATE_FLUSH_MS)
     }
 
     const init = async () => {
@@ -185,33 +185,39 @@ const WebcamRecorder = ({
           locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`,
         })
         faceMesh.setOptions({
-          // Detect up to 2 faces so we can flag interview integrity issues.
-          // We still score only the primary face (index 0) to keep compute low.
-          maxNumFaces:            2,
-          refineLandmarks:        false,   // saves +40ms/frame
+          // Detect up to 2 faces for integrity checks.
+          maxNumFaces: 2,
+          refineLandmarks: false,
           minDetectionConfidence: 0.5,
-          minTrackingConfidence:  0.5,
+          minTrackingConfidence: 0.5,
         })
 
+        let multipleFacesCounter = 0
         faceMesh.onResults((results) => {
           // ── ZERO React state calls here — everything goes into refs ──────────
           const canvas = canvasRef.current
           if (!canvas) return
 
-          const vw = video.videoWidth  || 320
+          const vw = video.videoWidth || 320
           const vh = video.videoHeight || 240
           if (canvasSizeRef.current.w !== vw || canvasSizeRef.current.h !== vh) {
-            canvas.width  = vw
+            canvas.width = vw
             canvas.height = vh
             ctxRef.current = null
-            canvasSizeRef.current = { w: vw, h: vh }
+            canvasSizeRef.current = { v: vw, h: vh }
           }
 
           const faceCount = results.multiFaceLandmarks?.length || 0
 
-          // Integrity: more than one face detected during an active session.
+          // Integrity: Only trigger if multiple faces are detected for 5 consecutive frames
+          // to prevent false positives from background movement or shadows.
           if (faceCount > 1) {
-            try { onIntegrityViolation?.({ type: 'MULTIPLE_FACES', faceCount }) } catch { /* ignore */ }
+            multipleFacesCounter++
+            if (multipleFacesCounter >= 5) {
+              try { onIntegrityViolation?.({ type: 'MULTIPLE_FACES', faceCount }) } catch { /* ignore */ }
+            }
+          } else {
+            multipleFacesCounter = 0
           }
 
           if (!faceCount) {
@@ -224,7 +230,7 @@ const WebcamRecorder = ({
           }
 
           const lm = results.multiFaceLandmarks[0]
-          pendingLmRef.current   = lm               // rAF painter reads this
+          pendingLmRef.current = lm               // rAF painter reads this
           latestScoreRef.current = computeScores(lm) // interval flushes this
           // ── No setState, no onEmotionScore call — completely non-blocking ──
         })
@@ -279,7 +285,7 @@ const WebcamRecorder = ({
 
     return () => {
       cancelled = true
-      if (rafRef.current)   cancelAnimationFrame(rafRef.current)
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
       if (flushRef.current) clearInterval(flushRef.current)
       cameraRef.current?.stop?.()
       streamRef.current?.getTracks().forEach(t => t.stop())
@@ -329,18 +335,18 @@ const WebcamRecorder = ({
       )}
 
       {/* Corner brackets */}
-      {['tl','tr','bl','br'].map(pos => (
+      {['tl', 'tr', 'bl', 'br'].map(pos => (
         <div key={pos} style={{
           position: 'absolute',
-          top:    pos.startsWith('t') ? '0.625rem' : 'auto',
+          top: pos.startsWith('t') ? '0.625rem' : 'auto',
           bottom: pos.startsWith('b') ? '0.625rem' : 'auto',
-          left:   pos.endsWith('l')   ? '0.625rem' : 'auto',
-          right:  pos.endsWith('r')   ? '0.625rem' : 'auto',
+          left: pos.endsWith('l') ? '0.625rem' : 'auto',
+          right: pos.endsWith('r') ? '0.625rem' : 'auto',
           width: 14, height: 14,
-          borderTop:    pos.startsWith('t') ? '2px solid rgba(14,165,233,0.6)' : 'none',
+          borderTop: pos.startsWith('t') ? '2px solid rgba(14,165,233,0.6)' : 'none',
           borderBottom: pos.startsWith('b') ? '2px solid rgba(14,165,233,0.6)' : 'none',
-          borderLeft:   pos.endsWith('l')   ? '2px solid rgba(14,165,233,0.6)' : 'none',
-          borderRight:  pos.endsWith('r')   ? '2px solid rgba(14,165,233,0.6)' : 'none',
+          borderLeft: pos.endsWith('l') ? '2px solid rgba(14,165,233,0.6)' : 'none',
+          borderRight: pos.endsWith('r') ? '2px solid rgba(14,165,233,0.6)' : 'none',
         }} />
       ))}
 

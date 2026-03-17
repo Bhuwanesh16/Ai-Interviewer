@@ -159,7 +159,9 @@ def submit_interview(user_id):
     edge_speech_str = request.form.get("edge_speech_score")
     if edge_speech_str:
         try:
-            edge_speech = float(edge_speech_str)
+            edge_speech_raw = float(edge_speech_str)
+            # Clamp to safe range just like edge_facial_score
+            edge_speech = max(0.05, min(edge_speech_raw, 0.95))
         except (ValueError, TypeError):
             edge_speech = None
     else:
@@ -257,10 +259,14 @@ def submit_interview(user_id):
         skills=session_skills,
     )
 
+    # Detect heuristic placeholder transcript so scoring can apply NLP cap
+    is_heuristic = bool(transcript_result.get("_heuristic", False))
+
     scores = scoring_service.compute_final_score(
         facial_score,
         speech_result["speech_score"],
         nlp_result["nlp_score"],
+        is_heuristic_transcript=is_heuristic,
     )
 
     response = Response(

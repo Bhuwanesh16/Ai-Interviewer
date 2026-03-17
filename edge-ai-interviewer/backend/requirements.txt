@@ -13,5 +13,6 @@ soundfile
 sentence-transformers==2.5.1
 openai-whisper
 SpeechRecognition
+pydub
 mediapipe
 opencv-python

@@ -98,10 +98,29 @@ const Result = () => {
     ?? location.state?.metrics
     ?? {}
 
+  // ── Multi-face integrity flag (from facial_service) ────────────────────
+  // Aggregate across ALL responses: flag if ANY question had a violation.
+  const integrityViolation = allResponses.some(
+    r => r.metrics?.multiple_faces_detected === true
+  )
+  // Find the worst (highest) violation percentage across all responses
+  const worstViolationPct = allResponses.reduce((max, r) => {
+    const pct = r.metrics?.multiple_face_violation_pct ?? 0
+    return pct > max ? pct : max
+  }, 0)
+  const peakFaceCount = allResponses.reduce((max, r) => {
+    const n = r.metrics?.face_count_max ?? 0
+    return n > max ? n : max
+  }, 0)
+
+  const SENTINEL = '__EMPTY_AUDIO__'
+
   const isTranscriptUnavailable =
-    typeof transcript === 'string' && (
+    !transcript ||
+    transcript === SENTINEL ||
+    (
+      typeof transcript === 'string' &&
       transcript.toLowerCase().includes('transcription unavailable')
-      || transcript === '__EMPTY_AUDIO__'
     )
 
   // Single useEffect — only loads data once when sessionId changes
@@ -287,6 +306,59 @@ const Result = () => {
         </motion.div>
       </motion.div>
 
+      {/* ── Integrity Warning Banner (shown when multiple faces detected) ── */}
+      {integrityViolation && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          style={{
+            borderRadius: '1rem',
+            border: '1.5px solid rgba(244,63,94,0.5)',
+            background: 'linear-gradient(135deg, rgba(244,63,94,0.06), rgba(251,113,133,0.04))',
+            padding: '1rem 1.25rem',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '0.875rem',
+            boxShadow: '0 2px 16px rgba(244,63,94,0.1)',
+          }}
+        >
+          {/* Icon */}
+          <div style={{
+            width: 36, height: 36, flexShrink: 0,
+            borderRadius: '50%',
+            background: 'rgba(244,63,94,0.12)',
+            border: '1px solid rgba(244,63,94,0.35)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '1rem',
+          }}>
+            ⚠️
+          </div>
+          <div style={{ flex: 1 }}>
+            <p style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: '0.65rem',
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+              color: '#f43f5e',
+              fontWeight: 700,
+              marginBottom: '0.3rem',
+            }}>Integrity Alert — Multiple Faces Detected</p>
+            <p style={{
+              fontSize: '0.8375rem',
+              color: '#1e293b',
+              lineHeight: 1.6,
+              margin: 0,
+              fontFamily: "'DM Sans', sans-serif",
+            }}>
+              Our facial analysis detected <strong>{peakFaceCount} {peakFaceCount === 2 ? 'faces' : 'or more faces'}</strong> in&nbsp;
+              <strong style={{ color: '#f43f5e' }}>{worstViolationPct}%</strong> of frames during this session.
+              This may indicate an unauthorized third party was present. The facial score has been penalized accordingly.
+            </p>
+          </div>
+        </motion.div>
+      )}
+
       {/* ── Score cards + Radar ── */}
       <div style={{
         display: 'grid',
@@ -305,8 +377,8 @@ const Result = () => {
               transition={{ delay: 0.35, duration: 0.4 }}
               style={{
                 borderRadius: '1rem',
-                border: '1px solid rgba(245,158,11,0.25)',
-                background: 'rgba(245,158,11,0.06)',
+                border: '1px solid rgba(148,163,184,0.2)',
+                background: 'rgba(148,163,184,0.05)',
                 padding: '0.9rem 1rem',
                 boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
               }}
@@ -316,23 +388,15 @@ const Result = () => {
                 fontSize: '0.6rem',
                 letterSpacing: '0.14em',
                 textTransform: 'uppercase',
-                color: '#d97706',
+                color: '#64748b',
                 marginBottom: '0.4rem',
                 fontWeight: 700,
               }}>
-                Content analysis disabled
+                Audio transcript unavailable
               </p>
               <p style={{ fontSize: '0.8rem', color: '#475569', lineHeight: 1.6, margin: 0 }}>
-                Transcription is unavailable, so content relevance cannot be scored. Enable Whisper in the backend environment and retry.
-              </p>
-              <p style={{
-                marginTop: '0.6rem',
-                fontSize: '0.75rem',
-                color: '#0f172a',
-                fontFamily: "'JetBrains Mono', monospace",
-                whiteSpace: 'pre-wrap',
-              }}>
-                {'pip install openai-whisper\n(Recommended: restart backend after install)'}
+                No speech was detected in this recording. Content scoring has been skipped.
+                Ensure your microphone is enabled and speak clearly during the interview.
               </p>
             </motion.div>
           )}
@@ -722,7 +786,10 @@ const Result = () => {
           borderLeft: '2px solid rgba(14,165,233,0.3)',
           paddingLeft: '0.875rem',
           fontFamily: "'DM Sans', sans-serif",
-        }}>{transcript || 'No transcript available.'}</p>
+        }}>{isTranscriptUnavailable
+          ? 'No speech was detected in this recording. Please ensure your microphone is enabled and you speak clearly.'
+          : (transcript || 'No transcript available.')}
+        </p>
       </motion.div>
     </div>
   )

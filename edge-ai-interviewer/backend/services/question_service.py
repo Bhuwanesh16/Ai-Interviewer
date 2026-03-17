@@ -461,11 +461,19 @@ def _get_fallback(experience: str, n: int, role: str = "Software Engineer") -> l
         bank = GENERIC_FALLBACK
     else:
         bank = role_bank.get(level_key, GENERIC_FALLBACK)
-    shuffled = bank.copy()
+
+    # Ensure uniqueness. If we need more than the current bank has,
+    # supplement with generic questions rather than repeating.
+    shuffled = list(bank)
     random.shuffle(shuffled)
-    while len(shuffled) < n:
-        shuffled += bank.copy()
-    return shuffled[:n]
+
+    if len(shuffled) >= n:
+        return shuffled[:n]
+
+    # Supplement if bank is too small
+    combined = shuffled + [q for q in GENERIC_FALLBACK if q not in shuffled]
+    random.shuffle(combined)
+    return combined[:n]
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -518,29 +526,23 @@ def generate_questions(role: str, experience: str, skills: str, question_volume:
 
         valid = [q for q in questions if len(q) > 15 and "?" in q]
 
-        if valid:
+        if len(valid) >= question_volume:
             logger.info(f"phi3 generated {len(valid)} questions for {role} ({experience})")
-            return valid
+            return valid[:question_volume]
 
-        logger.warning(f"phi3 returned no valid questions (raw[:200]: {raw[:200]!r}) — fallback")
-        return _get_fallback(experience, question_volume, role)
+        # If LLM didn't give enough unique valid questions, supplement with fallback
+        logger.warning(f"phi3 returned insufficient questions ({len(valid)}/{question_volume}) — supplementing")
+        fallback_qs = _get_fallback(experience, question_volume, role)
+        combined = valid + [q for q in fallback_qs if q not in valid]
+        return combined[:question_volume]
 
     except requests.exceptions.Timeout:
-        logger.warning(f"phi3 timed out after {min(max(1, QUESTION_GEN_TIMEOUT_SECONDS), max(1, OLLAMA_TIMEOUT))}s — using fallback")
-        global _ollama_available
-        _ollama_available = None
-        # Use the simple fallback bank first, then pad with role-specific bank if needed.
-        out = [random.choice(FALLBACK_QUESTIONS) for _ in range(question_volume)]
-        if len(out) < question_volume:
-            out += _get_fallback(experience, question_volume - len(out), role)
-        return out[:question_volume] if out else [random.choice(FALLBACK_QUESTIONS)]
+        logger.warning(f"phi3 timed out — using fallback")
+        return _get_fallback(experience, question_volume, role)
 
     except Exception as exc:
         logger.warning(f"Question generation failed ({exc}) — using fallback")
-        out = [random.choice(FALLBACK_QUESTIONS) for _ in range(question_volume)]
-        if len(out) < question_volume:
-            out += _get_fallback(experience, question_volume - len(out), role)
-        return out[:question_volume] if out else [random.choice(FALLBACK_QUESTIONS)]
+        return _get_fallback(experience, question_volume, role)
 
 
 def generate_questions_with_source(

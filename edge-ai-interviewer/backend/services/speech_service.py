@@ -33,7 +33,8 @@ class SpeechAnalysisService:
         _ = Path(audio_path)
 
         if not LIBROSA_AVAILABLE:
-            return {"speech_score": 0.83, "metrics": {"clarity": "High", "pace": "Optimal"}}
+            # Neutral fallback — 0.5 is honest "we don't know" rather than 0.83 bias
+            return {"speech_score": 0.5, "metrics": {"clarity": "Unavailable", "pace": "Unknown"}}
 
         try:
             # Load the audio file
@@ -58,20 +59,27 @@ class SpeechAnalysisService:
                 return {"speech_score": 0.0, "metrics": {}}
 
             rate_per_sec = len(onsets) / duration_sec
-            # Target: 2.5 - 3.5 onsets/sec is typical for clear speech
-            rate_score = 1.0 - min(abs(rate_per_sec - 3.0) / 3.0, 1.0)
+            # Target: 2.0–3.5 onsets/sec is typical for clear, measured speech
+            # Use a Gaussian-like bell curve centred at 2.75 (midpoint of ideal range)
+            # so both very fast and very slow speakers score poorly
+            target_rate = 2.75
+            rate_deviation = abs(rate_per_sec - target_rate)
+            rate_score = max(0.0, 1.0 - (rate_deviation / 2.5) ** 1.5)
 
-            # 2. Clarity & SNR (Industrial Standard Check)
-            # Estimate noise from the quietest 10% of the clip
+            # 2. Clarity & SNR (calibrated for compressed WebM audio)
             rms = librosa.feature.rms(y=y)[0]
             sorted_rms = np.sort(rms)
-            noise_floor = np.mean(sorted_rms[:max(1, int(len(sorted_rms) * 0.1))])
-            peak_signal = np.max(rms)
+            # Use median of bottom 20% for noise floor — more robust than mean of 10%
+            noise_floor = np.median(sorted_rms[:max(1, int(len(sorted_rms) * 0.20))])
+            peak_signal = np.percentile(rms, 90)   # 90th pct, not absolute max (avoids clipping spikes)
 
-            # SNR in dB approximation
+            # SNR in dB approximation.
+            # WebM/Opus compressed audio typically has SNR 10–20 dB even for good speech.
+            # Recalibrated range: >15 dB = good, 5–15 = acceptable, <5 = poor
             snr = 20 * np.log10(peak_signal / (noise_floor + 1e-6)) if peak_signal > 0 else 0
-            # Industrial standard: > 20dB is good, < 10dB is poor
-            clarity_score = min(max((snr - 5) / 25, 0.0), 1.0)
+            # Old: (snr-5)/25 — too generous for compressed audio (scores near 1.0 always)
+            # New: (snr-3)/20 — gives meaningful spread across real compressed audio
+            clarity_score = min(max((snr - 3) / 20.0, 0.0), 1.0)
 
             # 3. Prosody / Monotony (Frequency Variation)
             f0, _, _ = librosa.pyin(
@@ -101,14 +109,15 @@ class SpeechAnalysisService:
             # New formula: linear decay — CV=0 → 1.0, CV=1.5 → 0.0
             energy_score = 1.0 - min(cv_rms / 1.5, 1.0)
 
-            # Final Blend (Pace 25%, Clarity 25%, Prosody 25%, Energy Stability 25%)
+            # Final Blend (Pace 25%, Clarity 30%, Prosody 25%, Energy Stability 20%)
+            # Clarity raised from 25% — it's the most objective signal
             final_score = (
-                (rate_score * 0.25) +
-                (clarity_score * 0.25) +
-                (pitch_score * 0.25) +
-                (energy_score * 0.25)
+                (rate_score    * 0.25) +
+                (clarity_score * 0.30) +
+                (pitch_score   * 0.25) +
+                (energy_score  * 0.20)
             )
-            final_score = max(0.1, min(final_score, 1.0))
+            final_score = max(0.05, min(final_score, 1.0))
 
             # Professional classification
             is_energetic = mean_rms > 0.05   # RMS energy threshold for "loud enough"
@@ -136,7 +145,8 @@ class SpeechAnalysisService:
 
         except Exception as e:
             logging.error(f"Error during speech analysis: {e}")
-            return {"speech_score": 0.83, "metrics": {"clarity": "Error"}}
+            # Return 0.5 (neutral) instead of 0.83 (falsely high)
+            return {"speech_score": 0.5, "metrics": {"clarity": "Error", "pace": "Unknown"}}
 
 
 speech_service = SpeechAnalysisService()

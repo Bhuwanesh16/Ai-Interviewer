@@ -1,12 +1,15 @@
 """
 Facial analysis service.
 
-Uses MediaPipe Face Mesh to extract basic facial cues like presence
-and smile (mouth aspect ratio) from the video to determine engagement.
+Uses MediaPipe Face Mesh to extract basic facial cues like presence,
+smile (mouth aspect ratio), eye contact, head stability, and brow
+engagement from the video to determine interview performance.
 
 Fixes applied:
 - Added landmark count guard before accessing iris indices 468/473
 - Widened expression_score normalization range for better discrimination
+- Multi-face detection: max_num_faces raised to 4; frames with >1 face
+  are flagged as integrity violations and a score penalty is applied.
 """
 
 from pathlib import Path
@@ -27,6 +30,11 @@ except ImportError as e:
     MP_AVAILABLE = False
     logging.warning(f"Facial analysis dependencies missing ({e}). Service will fallback.")
 
+# Fraction of frames with multiple faces before a penalty is applied
+_MULTI_FACE_THRESHOLD = 0.10   # 10 % of processed frames
+# Score deduction applied when threshold is exceeded (0–1 scale)
+_MULTI_FACE_PENALTY   = 0.20
+
 
 class FacialAnalysisService:
     def __init__(self):
@@ -35,7 +43,7 @@ class FacialAnalysisService:
             try:
                 self.face_mesh = mp_face_mesh.FaceMesh(
                     static_image_mode=False,
-                    max_num_faces=1,
+                    max_num_faces=4,          # Detect up to 4 faces for integrity checking
                     refine_landmarks=True,
                     min_detection_confidence=0.5,
                     min_tracking_confidence=0.5
@@ -59,9 +67,12 @@ class FacialAnalysisService:
 
         total_frames = 0
         face_detected_frames = 0
+        multi_face_frames = 0     # frames where >1 face detected (integrity check)
+        max_faces_seen = 0        # peak number of faces in a single frame
         smile_scores = []
         eye_contact_scores = []
         head_stability_scores = []
+        brow_scores = []           # brow-raise engagement
 
         # Sample frames to process faster:
         # - aim for ~1 frame per second (if fps is known)
@@ -95,6 +106,19 @@ class FacialAnalysisService:
 
             if results.multi_face_landmarks:
                 face_detected_frames += 1
+                num_faces = len(results.multi_face_landmarks)
+
+                # ── Multi-face integrity detection ────────────────────────────
+                if num_faces > 1:
+                    multi_face_frames += 1
+                    logging.warning(
+                        f"[FacialService] {num_faces} faces detected in frame "
+                        f"{frame_count} — possible integrity violation."
+                    )
+                if num_faces > max_faces_seen:
+                    max_faces_seen = num_faces
+
+                # Analyse the PRIMARY (largest / most prominent) face only
                 landmarks = results.multi_face_landmarks[0].landmark
 
                 # 1. Smile / Engagement (Mouth width vs Face width)
@@ -145,8 +169,22 @@ class FacialAnalysisService:
                 nose = landmarks[4]
                 face_center_x = (cheek_left.x + cheek_right.x) / 2
                 offset = abs(nose.x - face_center_x)
-                head_stability = 1.0 - min(offset * 5, 1.0)
+                head_stability = 1.0 - min(offset * 4.0, 1.0)   # was *5 — less punishing
                 head_stability_scores.append(head_stability)
+
+                # 4. Brow raise — engagement signal
+                # Upper brow: 10 (right brow upper), 285 (left brow upper)
+                # Lower reference: cheek midpoint y
+                try:
+                    r_brow = landmarks[10]
+                    l_brow = landmarks[285]
+                    avg_brow_y = (r_brow.y + l_brow.y) / 2
+                    # Lower brow_y value (in normalized coords) = brows higher on face = raised
+                    # Typical relaxed position ~0.28; raised ~0.22; furrowed ~0.33
+                    brow_raise = max(0.0, min((0.30 - avg_brow_y) / 0.10, 1.0))
+                    brow_scores.append(brow_raise)
+                except (IndexError, AttributeError):
+                    pass
 
         cap.release()
 
@@ -155,40 +193,67 @@ class FacialAnalysisService:
 
         presence_ratio = face_detected_frames / total_frames
         if presence_ratio < 0.2:
-            return {"facial_score": 0.2, "metrics": {"presence": "Low / Off-screen"}}
+            # Linear decay from 0.2 down instead of hard cliff at 0.2
+            presence_score = 0.1 + presence_ratio * 0.5
+        else:
+            presence_score = 0.5 + presence_ratio * 0.5   # 0.2 → 0.6, 1.0 → 1.0
 
-        avg_smile = np.mean(smile_scores) if smile_scores else 0
-        avg_eye_contact = np.mean(eye_contact_scores) if eye_contact_scores else 0.5
+        avg_smile          = np.mean(smile_scores)          if smile_scores          else 0
+        avg_eye_contact    = np.mean(eye_contact_scores)    if eye_contact_scores    else 0.5
         avg_head_stability = np.mean(head_stability_scores) if head_stability_scores else 0.5
+        avg_brow           = np.mean(brow_scores)           if brow_scores           else 0.4
 
-        # Professional Scoring Logic:
-        # 1. Presence (20%): Just being on screen.
-        # 2. Engagement (30%): Smile/Expression ratio.
-        # 3. Eye Contact (30%): Looking at the camera.
-        # 4. Body Language (20%): Head stability / Facing forward.
+        # ── Multi-face integrity assessment ──────────────────────────────────
+        multi_face_ratio = multi_face_frames / total_frames if total_frames > 0 else 0.0
+        multiple_faces_detected = multi_face_ratio >= _MULTI_FACE_THRESHOLD
 
-        # FIX: Widened normalization range from (0.35–0.50) to (0.30–0.55).
-        # Old range compressed most real candidates into a narrow 0.5–0.73 band.
-        # New range: smile_ratio 0.30 → score 0.5, 0.55 → score 1.0
-        expression_score = min((max(avg_smile - 0.30, 0) / 0.25) * 0.5 + 0.5, 1.0)
+        if multiple_faces_detected:
+            logging.warning(
+                f"[FacialService] Integrity violation: multiple faces in "
+                f"{round(multi_face_ratio * 100)}% of frames "
+                f"(peak: {max_faces_seen} faces). Applying score penalty."
+            )
+
+        # Professional Scoring Logic (recalibrated v3 + multi-face penalty):
+        # 1. Presence   (15%): Being on screen consistently.
+        # 2. Expression (25%): Smile + brow raise = broader engagement.
+        # 3. Eye Contact (35%): Most direct signal of attentiveness.
+        # 4. Head Stability (25%): Facing forward, not fidgeting.
+
+        # Expression = blend of smile ratio and brow engagement
+        # Smile normalization: ratio 0.30 → score 0.5, 0.55 → 1.0 (kept from v2)
+        smile_score  = min((max(avg_smile - 0.30, 0) / 0.25) * 0.5 + 0.5, 1.0)
+        # Blend smile and brow raise (60/40)
+        expression_score = smile_score * 0.60 + avg_brow * 0.40
 
         final_score = (
-            (presence_ratio * 0.2) +
-            (expression_score * 0.3) +
-            (avg_eye_contact * 0.3) +
-            (avg_head_stability * 0.2)
+            (presence_score     * 0.15) +
+            (expression_score   * 0.25) +
+            (avg_eye_contact    * 0.35) +
+            (avg_head_stability * 0.25)
         )
-        final_score = max(0.1, min(final_score, 1.0))
+
+        # Apply integrity penalty for multiple faces
+        if multiple_faces_detected:
+            # Scale penalty by how severe the violation is (up to 2× the base penalty)
+            severity = min(multi_face_ratio / _MULTI_FACE_THRESHOLD, 2.0)
+            final_score -= _MULTI_FACE_PENALTY * severity
+
+        final_score = max(0.05, min(final_score, 1.0))
 
         return {
             "facial_score": round(float(final_score), 2),
             "metrics": {
                 "presence": f"{round(presence_ratio * 100)}%",
                 "eye_contact": "High" if avg_eye_contact > 0.8 else "Good" if avg_eye_contact > 0.6 else "Needs Improvement",
-                "engagement": "Enthusiastic" if expression_score > 0.75 else "Professional" if expression_score > 0.45 else "Reserved",
-                "posture": "Stable" if avg_head_stability > 0.8 else "Restless" if avg_head_stability < 0.5 else "Average",
-                "smile_index": round(float(avg_smile), 2),
-                "eye_contact_index": round(float(avg_eye_contact), 2)
+                "engagement":  "Enthusiastic" if expression_score > 0.75 else "Professional" if expression_score > 0.45 else "Reserved",
+                "posture":     "Stable" if avg_head_stability > 0.8 else "Restless" if avg_head_stability < 0.5 else "Average",
+                "smile_index":       round(float(avg_smile), 2),
+                "eye_contact_index": round(float(avg_eye_contact), 2),
+                # ── Multi-face integrity fields ──────────────────────────────
+                "multiple_faces_detected":     multiple_faces_detected,
+                "multiple_face_violation_pct": round(multi_face_ratio * 100, 1),
+                "face_count_max":              max_faces_seen,
             }
         }
 
